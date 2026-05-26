@@ -21,6 +21,11 @@ public class MonsterFarDespawn : MonoBehaviour
         despawnDistance = Mathf.Max(despawnDistance, suggestedDespawnDistance);
     }
 
+    public void ConfigureForKind(MonsterKind kind)
+    {
+        enabled = kind != MonsterKind.Boss;
+    }
+
     void Update()
     {
         if (Time.time < nextCheckTime)

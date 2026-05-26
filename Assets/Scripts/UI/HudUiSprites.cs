@@ -8,7 +8,23 @@ public static class HudUiSprites
 
     public static Sprite White => whiteSprite ??= CreateWhiteSprite();
 
-    public static Sprite Circle => circleSprite ??= CreateCircleSprite();
+    public static Sprite Circle
+    {
+        get
+        {
+            if (circleSprite != null)
+            {
+                return circleSprite;
+            }
+
+            circleSprite = Resources.Load<Sprite>("UI/MinimapCircle");
+            if (circleSprite == null)
+            {
+                circleSprite = CreateCircleSprite();
+            }
+            return circleSprite;
+        }
+    }
 
     static Sprite CreateWhiteSprite()
     {

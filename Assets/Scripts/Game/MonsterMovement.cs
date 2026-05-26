@@ -48,6 +48,11 @@ public class MonsterMovement : MonoBehaviour
 
     public static int ActiveMonsterCount => ActiveMonsters.Count;
 
+    public void Configure(float speed)
+    {
+        moveSpeed = Mathf.Max(0f, speed);
+    }
+
     public static Transform GetActiveMonster(int index)
     {
         if (index < 0 || index >= ActiveMonsters.Count)

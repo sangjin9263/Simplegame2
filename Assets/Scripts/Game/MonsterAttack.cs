@@ -19,6 +19,11 @@ public class MonsterAttack : MonoBehaviour
 
     public bool IsAttacking => isAttacking;
 
+    public void Configure(int damage)
+    {
+        attackDamage = Mathf.Max(0, damage);
+    }
+
     void Start()
     {
         if (spumPrefabs == null)

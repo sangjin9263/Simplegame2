@@ -7,12 +7,12 @@ public struct PlayerLevelProgressionRow
 {
     public int id;
     public int level;
-    public int expTotal;
+    public int expRequired;
     public int hp;
     public int mp;
 }
 
-// CSV: stat_id,level,exp,hp,mp — 레벨별 누적 EXP·HP·MP 테이블.
+// CSV: stat_id,level,exp,hp,mp — exp는 현재 level에서 다음 level까지 필요한 경험치.
 public class PlayerLevelProgressionTable
 {
     const string DefaultResourcePath = "Config/player_stats_default";
@@ -65,7 +65,7 @@ public class PlayerLevelProgressionTable
 
             if (!int.TryParse(cells[0].Trim(), out int id)
                 || !int.TryParse(cells[1].Trim(), out int level)
-                || !int.TryParse(cells[2].Trim(), out int expTotal)
+                || !int.TryParse(cells[2].Trim(), out int expRequired)
                 || !int.TryParse(cells[3].Trim(), out int hp)
                 || !int.TryParse(cells[4].Trim(), out int mp))
             {
@@ -76,7 +76,7 @@ public class PlayerLevelProgressionTable
             {
                 id = id,
                 level = Mathf.Max(1, level),
-                expTotal = Mathf.Max(0, expTotal),
+                expRequired = Mathf.Max(0, expRequired),
                 hp = Mathf.Max(1, hp),
                 mp = Mathf.Max(0, mp)
             };
@@ -122,17 +122,18 @@ public class PlayerLevelProgressionTable
             return 1;
         }
 
-        if (!TryGetNextLevel(level, out PlayerLevelProgressionRow next))
+        if (!TryGetNextLevel(level, out _))
         {
-            return 1;
+            return 0;
         }
 
-        return Mathf.Max(1, next.expTotal - current.expTotal);
+        return Mathf.Max(1, current.expRequired);
     }
 
     static PlayerLevelProgressionTable CreateFallback()
     {
         return LoadFromCsv(@"stat_id,level,exp,hp,mp
-1001,1,0,10,5");
+1001,1,500,10,5
+1002,2,800,15,8");
     }
 }

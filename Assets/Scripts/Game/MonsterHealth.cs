@@ -20,9 +20,22 @@ public class MonsterHealth : MonoBehaviour
     MonsterMovement monsterMovement;
     MonsterHitReaction hitReaction;
 
+    MonsterKind kind = MonsterKind.Normal;
+
     public bool IsDead => isDead || isDying;
     public int CurrentHp => currentHp;
     public int MaxHp => maxHp;
+    public MonsterKind Kind => kind;
+    public bool IsBoss => kind == MonsterKind.Boss;
+
+    public void Configure(int hp, int expReward, MonsterKind monsterKind)
+    {
+        kind = monsterKind;
+        maxHp = Mathf.Max(1, hp);
+        currentHp = maxHp;
+        expOnDeathForTest = Mathf.Max(0, expReward);
+        RefreshHpBar();
+    }
 
     void Awake()
     {

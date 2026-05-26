@@ -61,7 +61,10 @@ public static class PlayerHudUiLayoutFactory
         Sprite whiteSprite = HudUiSprites.White;
         Sprite circleSprite = HudUiSprites.Circle;
 
-        GameObject panelObject = new GameObject("RadarMinimap", typeof(RectTransform), typeof(RadarMinimapView));
+        GameObject panelObject = new GameObject(
+            "RadarMinimap",
+            typeof(RectTransform),
+            typeof(RadarMinimapView));
         panelObject.transform.SetParent(canvasRect, false);
         RectTransform panelRect = panelObject.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0f, 1f);
@@ -73,16 +76,26 @@ public static class PlayerHudUiLayoutFactory
         Image ringImage = CreateImage("Ring", panelRect, circleSprite, new Color(0.55f, 0.58f, 0.62f, 0.95f));
         StretchFull(ringImage.rectTransform);
 
-        Image backgroundImage = CreateImage("Background", panelRect, circleSprite, new Color(0.02f, 0.02f, 0.03f, 0.92f));
-        RectTransform backgroundRect = backgroundImage.rectTransform;
-        backgroundRect.anchorMin = new Vector2(0.5f, 0.5f);
-        backgroundRect.anchorMax = new Vector2(0.5f, 0.5f);
-        backgroundRect.pivot = new Vector2(0.5f, 0.5f);
-        backgroundRect.sizeDelta = new Vector2(MinimapDiameter - 6f, MinimapDiameter - 6f);
-        backgroundRect.anchoredPosition = Vector2.zero;
+        GameObject mapClipObject = new GameObject("MapClip", typeof(RectTransform), typeof(Image), typeof(Mask));
+        mapClipObject.transform.SetParent(panelRect, false);
+        RectTransform mapClipRect = mapClipObject.GetComponent<RectTransform>();
+        float innerDiameter = MinimapDiameter - 6f;
+        mapClipRect.anchorMin = new Vector2(0.5f, 0.5f);
+        mapClipRect.anchorMax = new Vector2(0.5f, 0.5f);
+        mapClipRect.pivot = new Vector2(0.5f, 0.5f);
+        mapClipRect.sizeDelta = new Vector2(innerDiameter, innerDiameter);
+        mapClipRect.anchoredPosition = Vector2.zero;
+
+        Image mapClipImage = mapClipObject.GetComponent<Image>();
+        mapClipImage.sprite = circleSprite;
+        mapClipImage.color = new Color(0.02f, 0.02f, 0.03f, 0.92f);
+        mapClipImage.raycastTarget = false;
+
+        Mask mapMask = mapClipObject.GetComponent<Mask>();
+        mapMask.showMaskGraphic = true;
 
         GameObject blipsRootObject = new GameObject("Blips", typeof(RectTransform));
-        blipsRootObject.transform.SetParent(panelRect, false);
+        blipsRootObject.transform.SetParent(mapClipRect, false);
         RectTransform blipsRoot = blipsRootObject.GetComponent<RectTransform>();
         StretchFull(blipsRoot);
 
@@ -96,6 +109,7 @@ public static class PlayerHudUiLayoutFactory
 
         RadarMinimapView view = panelObject.GetComponent<RadarMinimapView>();
         view.Configure(blipsRoot, playerBlip);
+        RadarMinimapView.ApplyCircleLayout(panelObject.transform);
         return view;
     }
 

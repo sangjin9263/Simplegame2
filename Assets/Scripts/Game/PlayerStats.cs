@@ -110,7 +110,7 @@ public class PlayerStats : MonoBehaviour
 
         if (resetExp)
         {
-            exp = row.expTotal;
+            exp = 0;
         }
 
         RefreshExpToNextLevel();
@@ -139,16 +139,15 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
-        if (!progressionTable.TryGetNextLevel(level, out PlayerLevelProgressionRow next))
+        if (!progressionTable.TryGetNextLevel(level, out _))
         {
-            expMax = 1;
-            exp = Mathf.Max(exp, current.expTotal);
+            expMax = 0;
+            exp = 0;
             return;
         }
 
-        int expIntoLevel = Mathf.Max(0, exp - current.expTotal);
-        expMax = Mathf.Max(1, next.expTotal - current.expTotal);
-        exp = expIntoLevel;
+        expMax = Mathf.Max(1, current.expRequired);
+        exp = Mathf.Clamp(exp, 0, expMax);
     }
 
     void HandleHpChanged(int currentHp, int maxHp, bool refilled)
@@ -179,16 +178,14 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
-        if (!progressionTable.TryGetByLevel(level, out PlayerLevelProgressionRow current))
-        {
-            return;
-        }
+        exp += amount;
 
-        int totalExp = current.expTotal + Mathf.Max(0, exp) + amount;
-
-        while (progressionTable.TryGetNextLevel(level, out PlayerLevelProgressionRow next)
-            && totalExp >= next.expTotal)
+        while (progressionTable.TryGetByLevel(level, out PlayerLevelProgressionRow current)
+            && progressionTable.TryGetNextLevel(level, out PlayerLevelProgressionRow next)
+            && current.expRequired > 0
+            && exp >= current.expRequired)
         {
+            exp -= current.expRequired;
             level = next.level;
             hpMax = next.hp;
             mpMax = next.mp;
@@ -199,11 +196,8 @@ public class PlayerStats : MonoBehaviour
             {
                 playerHealth.ApplyMaxHp(hpMax, true);
             }
-
-            current = next;
         }
 
-        exp = Mathf.Max(0, totalExp - current.expTotal);
         RefreshExpToNextLevel();
         NotifyChanged();
     }

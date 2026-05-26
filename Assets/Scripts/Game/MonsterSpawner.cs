@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 // 플레이어 주변에 오크 몬스터를 랜덤 프리팹으로 소환합니다.
@@ -8,6 +9,9 @@ public class MonsterSpawner : MonoBehaviour
 
     [Header("몬스터 프리팹 (m1~m6)")]
     [SerializeField] GameObject[] monsterPrefabs;
+
+    [Header("몬스터 테이블")]
+    [SerializeField] TextAsset monsterCsvOverride;
 
     [Header("소환 수")]
     [SerializeField] int spawnCount = 12;
@@ -38,6 +42,10 @@ public class MonsterSpawner : MonoBehaviour
     [SerializeField] float monsterSpawnHeight = 1.05f;
 
     int nextSpawnOctant;
+
+    MonsterDefinitionTable monsterTable;
+    readonly List<MonsterDefinitionRow> spawnPool = new List<MonsterDefinitionRow>();
+    readonly Dictionary<string, GameObject> prefabsByName = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
 
     static readonly string[] DefaultPrefabPaths =
     {
@@ -131,6 +139,9 @@ public class MonsterSpawner : MonoBehaviour
     bool PrepareSpawnContext()
     {
         EnsureMonsterPrefabs();
+        EnsureMonsterTable();
+        RebuildPrefabMap();
+        RebuildSpawnPool();
 
         if (monsterPrefabs == null || monsterPrefabs.Length == 0)
         {
@@ -219,8 +230,7 @@ public class MonsterSpawner : MonoBehaviour
             return false;
         }
 
-        GameObject prefab = PickRandomPrefab();
-        if (prefab == null)
+        if (!TryPickSpawnEntry(out MonsterDefinitionRow row, out GameObject prefab))
         {
             return false;
         }
@@ -238,11 +248,45 @@ public class MonsterSpawner : MonoBehaviour
 
         instance.transform.SetPositionAndRotation(spawnPosition, Quaternion.identity);
         instance.name = prefab.name + "_Spawned";
-        SetupSpawnedMonster(instance, spawnPosition);
+        SetupSpawnedMonster(instance, spawnPosition, row);
         return true;
     }
 
-    GameObject PickRandomPrefab()
+    bool TryPickSpawnEntry(out MonsterDefinitionRow row, out GameObject prefab)
+    {
+        row = default;
+        prefab = null;
+
+        if (spawnPool.Count > 0)
+        {
+            int attempts = spawnPool.Count * 2;
+            for (int i = 0; i < attempts; i++)
+            {
+                MonsterDefinitionRow candidate = spawnPool[Random.Range(0, spawnPool.Count)];
+                if (prefabsByName.TryGetValue(candidate.prefabName, out prefab) && prefab != null)
+                {
+                    row = candidate;
+                    return true;
+                }
+            }
+        }
+
+        prefab = PickRandomPrefabWithoutTable();
+        if (prefab == null)
+        {
+            return false;
+        }
+
+        if (monsterTable != null && monsterTable.TryGetByPrefabName(prefab.name, out row))
+        {
+            return true;
+        }
+
+        row = default;
+        return true;
+    }
+
+    GameObject PickRandomPrefabWithoutTable()
     {
         int attempts = monsterPrefabs.Length * 2;
         for (int i = 0; i < attempts; i++)
@@ -327,7 +371,7 @@ public class MonsterSpawner : MonoBehaviour
         return new Vector3(x, groundHeight, z);
     }
 
-    void SetupSpawnedMonster(GameObject monster, Vector3 spawnPosition)
+    void SetupSpawnedMonster(GameObject monster, Vector3 spawnPosition, MonsterDefinitionRow row)
     {
         WorldCollision.ApplyMonster(monster);
 
@@ -363,6 +407,16 @@ public class MonsterSpawner : MonoBehaviour
             farDespawn = monster.AddComponent<MonsterFarDespawn>();
         }
 
+        if (row.monId != 0)
+        {
+            MonsterStats.Apply(monster, row);
+        }
+        else if (monsterTable != null
+                 && monsterTable.TryGetByPrefabName(GetPrefabBaseName(monster.name), out MonsterDefinitionRow fallbackRow))
+        {
+            MonsterStats.Apply(monster, fallbackRow);
+        }
+
         farDespawn.NotifySpawned(spawnRadiusMax + 12f);
 
         Transform unitRoot = monster.transform.Find("UnitRoot");
@@ -370,6 +424,62 @@ public class MonsterSpawner : MonoBehaviour
         {
             unitRoot.gameObject.AddComponent<BillboardFaceCamera>();
         }
+    }
+
+    void EnsureMonsterTable()
+    {
+        if (monsterCsvOverride != null)
+        {
+            monsterTable = MonsterDefinitionTable.LoadFromCsv(monsterCsvOverride.text);
+            return;
+        }
+
+        monsterTable = MonsterDefinitionTable.LoadDefault();
+    }
+
+    void RebuildPrefabMap()
+    {
+        prefabsByName.Clear();
+
+        if (monsterPrefabs == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < monsterPrefabs.Length; i++)
+        {
+            GameObject prefab = monsterPrefabs[i];
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            prefabsByName[prefab.name] = prefab;
+        }
+    }
+
+    void RebuildSpawnPool()
+    {
+        spawnPool.Clear();
+
+        if (monsterTable == null)
+        {
+            return;
+        }
+
+        var availableNames = new HashSet<string>(prefabsByName.Keys, System.StringComparer.OrdinalIgnoreCase);
+        monsterTable.CollectSpawnableNormals(spawnPool, availableNames);
+    }
+
+    static string GetPrefabBaseName(string instanceName)
+    {
+        const string spawnedSuffix = "_Spawned";
+        if (instanceName.EndsWith(spawnedSuffix))
+        {
+            return instanceName.Substring(0, instanceName.Length - spawnedSuffix.Length);
+        }
+
+        return instanceName;
     }
 
     void EnsureMonsterPrefabs()
