@@ -4,6 +4,11 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class PlayerHudRoot : MonoBehaviour
 {
+    void Awake()
+    {
+        EnsureLayout();
+    }
+
 #if UNITY_EDITOR
     [ContextMenu("Bake Missing HUD Layout (Editor Only)")]
     void BakeMissingLayoutInEditor()
@@ -21,6 +26,8 @@ public class PlayerHudRoot : MonoBehaviour
             return;
         }
 
+        RemoveDeprecatedHudElements(canvasRect);
+
         if (GetComponentInChildren<RadarMinimapView>(true) == null)
         {
             PlayerHudUiLayoutFactory.BuildRadarMinimap(canvasRect);
@@ -30,10 +37,30 @@ public class PlayerHudRoot : MonoBehaviour
         {
             PlayerHudUiLayoutFactory.BuildSessionHud(canvasRect);
         }
+    }
 
-        if (canvasRect.Find("InventoryPanel") == null)
+    static void RemoveDeprecatedHudElements(RectTransform canvasRect)
+    {
+        DestroyUiChild(canvasRect.Find("InventoryPanel"));
+        DestroyUiChild(canvasRect.Find("InventoryToggle"));
+        DestroyUiChild(canvasRect.Find("AimCursor"));
+    }
+
+    static void DestroyUiChild(Transform child)
+    {
+        if (child == null)
         {
-            PlayerHudUiLayoutFactory.BuildInventoryPlaceholders(canvasRect);
+            return;
         }
+
+        if (Application.isPlaying)
+        {
+            Destroy(child.gameObject);
+            return;
+        }
+
+#if UNITY_EDITOR
+        DestroyImmediate(child.gameObject);
+#endif
     }
 }

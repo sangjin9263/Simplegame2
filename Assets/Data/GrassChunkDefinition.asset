@@ -12,19 +12,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f4e2a1b3c5d6e7f9012345678abcd01, type: 3}
   m_Name: GrassChunkDefinition
   m_EditorClassIdentifier: 
-  floorPrefab: {fileID: 153680, guid: 7a18bb66b829b4c01847d4ee61daf7a0, type: 3}
-  floorPositionY: -1.843768
+  floorPrefab: {fileID: 199182, guid: e5d44f4e2fc605c41a9ccdc6e00d1f6d, type: 3}
+  floorPositionY: 0
+  floorVariants:
+  - prefab: {fileID: 199182, guid: e5d44f4e2fc605c41a9ccdc6e00d1f6d, type: 3}
+    positionY: 0
+    isSlope: 0
+    spawnWeight: 18
+  - prefab: {fileID: 7477020010309822707, guid: 94c162864afc23846ad786b5ef97456a, type: 3}
+    positionY: 0
+    isSlope: 1
+    spawnWeight: 1
+  - prefab: {fileID: 5405250151063726621, guid: 37dd503c131ac9343b08fb1ff6c819fd, type: 3}
+    positionY: 0
+    isSlope: 0
+    spawnWeight: 1
+  - prefab: {fileID: 7882259623317245961, guid: 2348c47d58749b34693c6b200a0c614b, type: 3}
+    positionY: 0
+    isSlope: 0
+    spawnWeight: 1
+  - prefab: {fileID: 2619847600607078372, guid: d7d2f7b487e17f74895a2752c0a92093, type: 3}
+    positionY: 0
+    isSlope: 0
+    spawnWeight: 1
+  - prefab: {fileID: 3841520992279783333, guid: 201ddecb4ca11c54f93d588d48338ac7, type: 3}
+    positionY: 0
+    isSlope: 0
+    spawnWeight: 1
   propEntries: []
   randomPropRules:
   - enabled: 1
     prefabs:
     - {fileID: 182992, guid: 2dddc243279734a6a9f3efdcce54e145, type: 3}
     - {fileID: 171422, guid: 80143bd420c3841ec90b722796c8a2d0, type: 3}
-    minCountPerChunk: 0
-    maxCountPerChunk: 4
-    edgePadding: 0.8
-    minDistanceBetweenProps: 1.8
-    positionY: 1.843768
+    minCountPerChunk: 1
+    maxCountPerChunk: 3
+    edgePadding: 0.9
+    minDistanceBetweenProps: 2.2
+    positionY: 0
     randomRotationY: 1
-    maxPlacementAttempts: 10
-    playerSafeRadius: 8
+    maxPlacementAttempts: 16
+    playerSafeRadius: 6
+    slopeAvoidRadius: 12
+    mainHighBoundaryAvoidRadius: 2.4
+  terrainFeatureRules: []

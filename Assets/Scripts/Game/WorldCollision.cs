@@ -1,13 +1,6 @@
 using UnityEngine;
 
-// 누가 이동하는지에 따라 막는 대상이 달라집니다.
-public enum MoverRole
-{
-    Player,
-    Monster
-}
-
-// 나무·몬스터·플레이어 등 이동을 막는 대상을 판별합니다.
+// 나무·몬스터·플레이어 등 충돌 관련 유틸리티입니다.
 public static class WorldCollision
 {
     public const string TreeObstacleTag = "TreeObstacle";
@@ -17,6 +10,7 @@ public static class WorldCollision
     const string ObstacleLayerName = "Obstacle";
 
     static int cachedObstacleLayer = int.MinValue;
+    static int cachedObstacleQueryMask = int.MinValue;
 
     public static int ObstacleLayer
     {
@@ -31,44 +25,20 @@ public static class WorldCollision
         }
     }
 
-    // CapsuleCast에 쓸 레이어 마스크입니다 (나무 Obstacle만 검사).
+    // 나무 Obstacle 레이어 마스크입니다 (CharacterController가 Ground는 직접 처리).
     public static int QueryLayerMask
     {
         get
         {
+            if (cachedObstacleQueryMask != int.MinValue)
+            {
+                return cachedObstacleQueryMask;
+            }
+
             int obstacle = ObstacleLayer;
-            if (obstacle >= 0)
-            {
-                return 1 << obstacle;
-            }
-
-            return 0;
+            cachedObstacleQueryMask = obstacle >= 0 ? 1 << obstacle : 0;
+            return cachedObstacleQueryMask;
         }
-    }
-
-    // 이 콜라이더가 이동을 막는지 확인합니다 (자기 자신 제외).
-    public static bool BlocksMovement(Collider collider, Transform moverRoot, MoverRole role)
-    {
-        if (collider == null || !collider.enabled)
-        {
-            return false;
-        }
-
-        if (moverRoot != null)
-        {
-            if (collider.transform == moverRoot || collider.transform.IsChildOf(moverRoot))
-            {
-                return false;
-            }
-        }
-
-        if (!PropCollisionLayers.IsTreeObstacleCollider(collider))
-        {
-            return false;
-        }
-
-        // 나무는 플레이어·몬스터 모두 막습니다.
-        return true;
     }
 
     public static void ApplyTreeObstacle(GameObject root)

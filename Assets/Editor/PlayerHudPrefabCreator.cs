@@ -140,9 +140,58 @@ public static class PlayerHudPrefabCreator
         }
     }
 
+    [MenuItem("Tools/Game/Clean Up Monster Blips From HUD")]
+    public static void CleanUpMonsterBlipsMenu()
+    {
+        using (PrefabUtility.EditPrefabContentsScope scope = new PrefabUtility.EditPrefabContentsScope(PrefabPath))
+        {
+            RemoveMonsterBlipsFromPrefab(scope.prefabContentsRoot);
+        }
+
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(ResourcesPrefabPath) != null)
+        {
+            using (PrefabUtility.EditPrefabContentsScope scope = new PrefabUtility.EditPrefabContentsScope(ResourcesPrefabPath))
+            {
+                RemoveMonsterBlipsFromPrefab(scope.prefabContentsRoot);
+            }
+        }
+
+        RemoveMonsterBlipsFromSceneHud();
+        AssetDatabase.SaveAssets();
+        Debug.Log("[PlayerHudPrefabCreator] MonsterBlip_* 정리 완료. PlayerBlip만 남깁니다.");
+    }
+
+    static void RemoveMonsterBlipsFromSceneHud()
+    {
+        RadarMinimapView[] minimaps = Object.FindObjectsByType<RadarMinimapView>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < minimaps.Length; i++)
+        {
+            RemoveMonsterBlipsFromTransform(FindBlipsRoot(minimaps[i].transform));
+        }
+    }
+
     static void RemoveMonsterBlipsFromPrefab(GameObject root)
     {
-        Transform blips = root.transform.Find("Canvas/RadarMinimap/Blips");
+        RemoveMonsterBlipsFromTransform(FindBlipsRoot(root.transform));
+    }
+
+    static Transform FindBlipsRoot(Transform hudRoot)
+    {
+        Transform blips = hudRoot.Find("Canvas/RadarMinimap/MapClip/Blips");
+        if (blips != null)
+        {
+            return blips;
+        }
+
+        blips = hudRoot.Find("Canvas/RadarMinimap/Blips");
+        return blips;
+    }
+
+    static void RemoveMonsterBlipsFromTransform(Transform blips)
+    {
         if (blips == null)
         {
             return;

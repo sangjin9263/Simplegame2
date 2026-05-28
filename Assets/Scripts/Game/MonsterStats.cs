@@ -5,7 +5,7 @@ public class MonsterStats : MonoBehaviour
 {
     [SerializeField] int monId;
     [SerializeField] int level = 1;
-    [SerializeField] MonsterKind kind = MonsterKind.Normal;
+    [SerializeField] MonsterKind kind = MonsterKind.Melee;
     [SerializeField] int maxMp;
 
     public int MonId => monId;
@@ -13,11 +13,16 @@ public class MonsterStats : MonoBehaviour
     public MonsterKind Kind => kind;
     public int MaxMp => maxMp;
     public bool IsBoss => kind == MonsterKind.Boss;
-    public bool IsNormal => kind == MonsterKind.Normal;
+    public bool IsMelee => kind == MonsterKind.Melee;
 
     public static void Apply(GameObject monster, MonsterDefinitionRow row)
     {
         if (monster == null)
+        {
+            return;
+        }
+
+        if (!GameplayComponents.EnsureMonster(monster, logIfMissing: true))
         {
             return;
         }
@@ -31,28 +36,33 @@ public class MonsterStats : MonoBehaviour
         stats.Initialize(row);
 
         MonsterHealth health = monster.GetComponent<MonsterHealth>();
-        if (health == null)
-        {
-            health = monster.AddComponent<MonsterHealth>();
-        }
-
         health.Configure(row.hp, row.giveExp, row.kind);
 
         MonsterMovement movement = monster.GetComponent<MonsterMovement>();
-        if (movement == null)
-        {
-            movement = monster.AddComponent<MonsterMovement>();
-        }
-
         movement.Configure(row.moveSpeed);
 
         MonsterAttack attack = monster.GetComponent<MonsterAttack>();
-        if (attack == null)
+        MonsterRangedAttack rangedAttack = monster.GetComponent<MonsterRangedAttack>();
+
+        if (rangedAttack != null)
         {
-            attack = monster.AddComponent<MonsterAttack>();
+            rangedAttack.Configure(row.damage);
         }
 
-        attack.Configure(row.damage);
+        bool useRangedAttack = row.monId != 0 ? IsRangedKind(row.kind) : IsRangedMonster(monster.name);
+        if (attack != null)
+        {
+            attack.enabled = !useRangedAttack;
+            if (!useRangedAttack)
+            {
+                attack.Configure(row.damage);
+            }
+        }
+
+        if (rangedAttack != null)
+        {
+            rangedAttack.enabled = useRangedAttack;
+        }
 
         MonsterFarDespawn farDespawn = monster.GetComponent<MonsterFarDespawn>();
         if (farDespawn != null)
@@ -67,5 +77,22 @@ public class MonsterStats : MonoBehaviour
         level = row.level;
         kind = row.kind;
         maxMp = row.mp;
+    }
+
+    static bool IsRangedMonster(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        return name.IndexOf("SPUM_orc_m7", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || name.IndexOf("SPUM_orc_m8", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || name.IndexOf("SPUM_orc_m9", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    static bool IsRangedKind(MonsterKind monsterKind)
+    {
+        return monsterKind == MonsterKind.Ranged || monsterKind == MonsterKind.Mage;
     }
 }

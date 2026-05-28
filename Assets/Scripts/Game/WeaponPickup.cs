@@ -3,21 +3,22 @@ using UnityEngine;
 // 바닥에 떨어진 무기입니다. 플레이어가 닿으면 자동으로 줍습니다.
 public class WeaponPickup : MonoBehaviour
 {
+    [SerializeField] WeaponPickupKind pickupKind = WeaponPickupKind.Melee;
     [SerializeField] Sprite weaponSprite;
     [SerializeField] float pickupRadius = 0.75f;
     [SerializeField] float groundHeight = 0f;
     [SerializeField] float billboardHeight = 0.4f;
-
-    // 맵에 보이도록 스프라이트 크기 배율입니다.
     [SerializeField] float worldDisplayScale = 3f;
 
     SpriteRenderer worldSprite;
     bool pickedUp;
 
     public Sprite WeaponSprite => weaponSprite;
+    public WeaponPickupKind PickupKind => pickupKind;
 
-    public void Configure(Sprite sprite, float height)
+    public void Configure(WeaponPickupKind kind, Sprite sprite, float height)
     {
+        pickupKind = kind;
         weaponSprite = sprite;
         groundHeight = height;
         BuildWorldVisual();
@@ -61,34 +62,92 @@ public class WeaponPickup : MonoBehaviour
             return;
         }
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
+        if (!GameSession.TryGetPlayerWorldCenter(out Vector3 playerPosition))
         {
             return;
         }
 
-        Vector3 playerPosition = playerObject.transform.position;
-        Vector3 pickupPosition = transform.position;
-        Vector3 flat = playerPosition - pickupPosition;
+        Vector3 flat = playerPosition - transform.position;
         flat.y = 0f;
-
         if (flat.sqrMagnitude > pickupRadius * pickupRadius)
         {
             return;
         }
 
-        PlayerWeaponCombat weaponCombat = playerObject.GetComponent<PlayerWeaponCombat>();
-        if (weaponCombat == null)
+        if (TryPickupWeapon())
         {
-            return;
+            pickedUp = true;
+            Destroy(gameObject);
+        }
+    }
+
+    bool TryPickupWeapon()
+    {
+        if (pickupKind == WeaponPickupKind.Bow)
+        {
+            PlayerRangedCombat rangedCombat = GameSession.PlayerRangedCombat;
+            if (rangedCombat == null || !rangedCombat.TryEquipBow(weaponSprite))
+            {
+                return false;
+            }
+
+            PlayerWeaponCombat meleeCombat = GameSession.PlayerWeaponCombat;
+            if (meleeCombat != null)
+            {
+                meleeCombat.UnequipWeapon();
+            }
+
+            PlayerMagicCombat magicCombat = GameSession.PlayerMagicCombat;
+            if (magicCombat != null)
+            {
+                magicCombat.UnequipStaff();
+            }
+
+            return true;
         }
 
-        if (!weaponCombat.TryEquipWeapon(weaponSprite))
+        if (pickupKind == WeaponPickupKind.Staff)
         {
-            return;
+            PlayerMagicCombat magicCombat = GameSession.PlayerMagicCombat;
+            if (magicCombat == null || !magicCombat.TryEquipStaff(weaponSprite))
+            {
+                return false;
+            }
+
+            PlayerWeaponCombat meleeCombat = GameSession.PlayerWeaponCombat;
+            if (meleeCombat != null)
+            {
+                meleeCombat.UnequipWeapon();
+            }
+
+            PlayerRangedCombat rangedCombat = GameSession.PlayerRangedCombat;
+            if (rangedCombat != null)
+            {
+                rangedCombat.UnequipBow();
+            }
+
+            return true;
         }
 
-        pickedUp = true;
-        Destroy(gameObject);
+        PlayerWeaponCombat weaponCombat = GameSession.PlayerWeaponCombat;
+        if (weaponCombat == null || !weaponCombat.TryEquipWeapon(weaponSprite))
+        {
+            return false;
+        }
+
+        PlayerRangedCombat ranged = GameSession.PlayerRangedCombat;
+        if (ranged != null)
+        {
+            ranged.UnequipBow();
+        }
+
+        PlayerMagicCombat magic = GameSession.PlayerMagicCombat;
+        if (magic != null)
+        {
+            magic.UnequipStaff();
+        }
+
+        return true;
     }
 }
+

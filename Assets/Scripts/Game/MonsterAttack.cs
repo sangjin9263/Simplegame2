@@ -13,6 +13,7 @@ public class MonsterAttack : MonoBehaviour
     [SerializeField] SPUM_Prefabs spumPrefabs;
 
     Transform playerTransform;
+    MonsterHealth monsterHealth;
     float nextAttackTime;
     bool isAttacking;
     int lastFlipSide;
@@ -24,6 +25,11 @@ public class MonsterAttack : MonoBehaviour
         attackDamage = Mathf.Max(0, damage);
     }
 
+    void Awake()
+    {
+        monsterHealth = GetComponent<MonsterHealth>();
+    }
+
     void Start()
     {
         if (spumPrefabs == null)
@@ -31,17 +37,23 @@ public class MonsterAttack : MonoBehaviour
             spumPrefabs = GetComponentInChildren<SPUM_Prefabs>();
         }
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject != null)
+        if (!GameSession.TryGetPlayerTransform(out Transform player))
         {
-            playerTransform = playerObject.transform;
+            GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
+            if (playerObject != null)
+            {
+                playerTransform = playerObject.transform;
+            }
+        }
+        else
+        {
+            playerTransform = player;
         }
     }
 
     void Update()
     {
-        MonsterHealth health = GetComponent<MonsterHealth>();
-        if (health != null && health.IsDead)
+        if (monsterHealth != null && monsterHealth.IsDead)
         {
             return;
         }
@@ -56,13 +68,9 @@ public class MonsterAttack : MonoBehaviour
             return;
         }
 
-        if (playerTransform == null)
+        if (playerTransform == null && GameSession.TryGetPlayerTransform(out Transform player))
         {
-            GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-            if (playerObject != null)
-            {
-                playerTransform = playerObject.transform;
-            }
+            playerTransform = player;
         }
 
         if (playerTransform == null)
@@ -183,12 +191,7 @@ public class MonsterAttack : MonoBehaviour
         }
 
         Vector3 playerPosition = playerTransform.position;
-        PlayerMovement playerMovement = playerTransform.GetComponent<PlayerMovement>();
-        if (playerMovement != null)
-        {
-            playerPosition = PlayerMovement.LastWorldCenter;
-        }
-        else if (PlayerWorldPosition.TryGetWorldCenter(0f, out Vector3 trackedPosition))
+        if (GameSession.TryGetPlayerWorldCenter(out Vector3 trackedPosition))
         {
             playerPosition = trackedPosition;
         }
@@ -215,7 +218,7 @@ public class MonsterAttack : MonoBehaviour
             return;
         }
 
-        PlayerHealth playerHealth = playerTransform.GetComponent<PlayerHealth>();
+        PlayerHealth playerHealth = GameSession.PlayerHealth;
         if (playerHealth == null || !playerHealth.IsAlive)
         {
             return;

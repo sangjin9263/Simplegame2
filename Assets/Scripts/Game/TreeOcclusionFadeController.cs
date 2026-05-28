@@ -45,6 +45,8 @@ public class TreeOcclusionFadeController : MonoBehaviour
     Camera targetCamera;
     float nextTreeCacheTime;
 
+    static TreeOcclusionFadeController activeInstance;
+
     float GetOccludedFadeTarget()
     {
         return Mathf.Lerp(1f, minOccludedFade, occlusionTransparencyPercent / 100f);
@@ -58,6 +60,39 @@ public class TreeOcclusionFadeController : MonoBehaviour
         public float currentFade = 1f;
         public float targetFade = 1f;
         public bool usingFadeMaterials;
+    }
+
+    void OnEnable()
+    {
+        activeInstance = this;
+    }
+
+    void OnDisable()
+    {
+        if (activeInstance == this)
+        {
+            activeInstance = null;
+        }
+    }
+
+    public static void NotifyTreeSpawned(Transform treeRoot)
+    {
+        if (treeRoot == null || activeInstance == null)
+        {
+            return;
+        }
+
+        activeInstance.RegisterTree(treeRoot);
+    }
+
+    public void RegisterTree(Transform treeRoot)
+    {
+        if (treeRoot == null || cachedTrees.Contains(treeRoot))
+        {
+            return;
+        }
+
+        cachedTrees.Add(treeRoot);
     }
 
     void Awake()
@@ -84,16 +119,15 @@ public class TreeOcclusionFadeController : MonoBehaviour
 
     void Start()
     {
-        if (followTarget == null)
+        if (followTarget == null && GameSession.TryGetPlayerTransform(out Transform player))
         {
-            GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-            if (playerObject != null)
-            {
-                followTarget = playerObject.transform;
-            }
+            followTarget = player;
         }
 
-        RefreshTreeCache();
+        if (cachedTrees.Count == 0)
+        {
+            RefreshTreeCache();
+        }
     }
 
     void LateUpdate()
@@ -261,11 +295,7 @@ public class TreeOcclusionFadeController : MonoBehaviour
     Vector3 GetPlayerBasePosition()
     {
         Vector3 position = followTarget.position;
-        if (followTarget.GetComponent<PlayerMovement>() != null)
-        {
-            position = PlayerMovement.LastWorldCenter;
-        }
-        else if (PlayerWorldPosition.TryGetWorldCenter(0f, out Vector3 tracked))
+        if (GameSession.TryGetPlayerWorldCenter(out Vector3 tracked))
         {
             position = tracked;
         }

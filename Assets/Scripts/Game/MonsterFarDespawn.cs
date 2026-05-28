@@ -9,6 +9,12 @@ public class MonsterFarDespawn : MonoBehaviour
 
     float nextCheckTime;
     float spawnedAtTime;
+    MonsterHealth monsterHealth;
+
+    void Awake()
+    {
+        monsterHealth = GetComponent<MonsterHealth>();
+    }
 
     void OnEnable()
     {
@@ -40,13 +46,12 @@ public class MonsterFarDespawn : MonoBehaviour
             return;
         }
 
-        MonsterHealth health = GetComponent<MonsterHealth>();
-        if (health != null && health.IsDead)
+        if (monsterHealth != null && monsterHealth.IsDead)
         {
             return;
         }
 
-        if (!TryGetPlayerGroundPosition(out Vector3 playerPosition))
+        if (!GameSession.TryGetPlayerWorldCenter(out Vector3 playerPosition))
         {
             return;
         }
@@ -58,33 +63,5 @@ public class MonsterFarDespawn : MonoBehaviour
         {
             Destroy(gameObject);
         }
-    }
-
-    static bool TryGetPlayerGroundPosition(out Vector3 playerPosition)
-    {
-        if (PlayerWorldPosition.TryGetWorldCenter(0f, out playerPosition))
-        {
-            playerPosition.y = 0f;
-            return true;
-        }
-
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
-        {
-            playerPosition = Vector3.zero;
-            return false;
-        }
-
-        PlayerMovement movement = playerObject.GetComponent<PlayerMovement>();
-        if (movement != null)
-        {
-            playerPosition = PlayerMovement.LastWorldCenter;
-            playerPosition.y = 0f;
-            return true;
-        }
-
-        playerPosition = playerObject.transform.position;
-        playerPosition.y = 0f;
-        return true;
     }
 }

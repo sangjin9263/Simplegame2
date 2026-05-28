@@ -3,6 +3,7 @@ using UnityEngine;
 
 // 플레이어 LV / EXP / HP / MP — CSV 레벨 테이블 기반.
 [DefaultExecutionOrder(-150)]
+[RequireComponent(typeof(PlayerHealth))]
 public class PlayerStats : MonoBehaviour
 {
     public const string LevelId = "level";
@@ -42,10 +43,18 @@ public class PlayerStats : MonoBehaviour
         playerHealth = GetComponent<PlayerHealth>();
         if (playerHealth == null)
         {
-            playerHealth = gameObject.AddComponent<PlayerHealth>();
+            Debug.LogError(
+                "[PlayerStats] PlayerHealth is required on the player prefab.",
+                gameObject);
         }
 
         ApplyLevel(1, resetExp: true, refillHpMp: true);
+
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement != null)
+        {
+            GameSession.RegisterPlayer(movement);
+        }
     }
 
     void OnEnable()

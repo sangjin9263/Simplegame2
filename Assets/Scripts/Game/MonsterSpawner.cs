@@ -15,13 +15,16 @@ public class MonsterSpawner : MonoBehaviour
 
     [Header("소환 수")]
     [SerializeField] int spawnCount = 12;
+    [Header("소환 비율 (근접:원거리:마법사)")]
+    [SerializeField] float meleeSpawnWeight = 8f;
+    [SerializeField] float rangedSpawnWeight = 1f;
+    [SerializeField] float mageSpawnWeight = 1f;
 
     [Header("소환 위치 (플레이어 기준)")]
     [SerializeField] float spawnRadiusMin = 22f;
     [SerializeField] float spawnRadiusMax = 38f;
     [SerializeField] float octantAngleJitter = 20f;
 
-    [SerializeField] float groundHeight = 0f;
     [SerializeField] float minSpawnDistanceFromPlayer = 18f;
 
     [SerializeField] Transform playerTransform;
@@ -47,20 +50,9 @@ public class MonsterSpawner : MonoBehaviour
     readonly List<MonsterDefinitionRow> spawnPool = new List<MonsterDefinitionRow>();
     readonly Dictionary<string, GameObject> prefabsByName = new Dictionary<string, GameObject>(System.StringComparer.OrdinalIgnoreCase);
 
-    static readonly string[] DefaultPrefabPaths =
-    {
-        "Assets/Prefabs/SPUM_orc_m1.prefab",
-        "Assets/Prefabs/SPUM_orc_m2.prefab",
-        "Assets/Prefabs/SPUM_orc_m3.prefab",
-        "Assets/Prefabs/SPUM_orc_m4.prefab",
-        "Assets/Prefabs/SPUM_orc_m5.prefab",
-        "Assets/Prefabs/SPUM_orc_m6.prefab"
-    };
-
     void Start()
     {
         RefreshPlayerReference();
-        EnsurePlayerWorldPositionTracker();
 
         if (monstersParent == null)
         {
@@ -160,6 +152,12 @@ public class MonsterSpawner : MonoBehaviour
 
     bool RefreshPlayerReference()
     {
+        if (GameSession.TryGetPlayerTransform(out Transform player))
+        {
+            playerTransform = player;
+            return true;
+        }
+
         GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
         if (playerObject == null)
         {
@@ -167,47 +165,18 @@ public class MonsterSpawner : MonoBehaviour
         }
 
         playerTransform = playerObject.transform;
+        PlayerMovement movement = playerObject.GetComponent<PlayerMovement>();
+        if (movement != null)
+        {
+            GameSession.RegisterPlayer(movement);
+        }
+
         return true;
-    }
-
-    void EnsurePlayerWorldPositionTracker()
-    {
-        if (playerTransform == null)
-        {
-            return;
-        }
-
-        if (playerTransform.GetComponent<PlayerMovement>() == null)
-        {
-            playerTransform.gameObject.AddComponent<PlayerMovement>();
-        }
-
-        if (playerTransform.GetComponent<PlayerWorldPosition>() == null)
-        {
-            playerTransform.gameObject.AddComponent<PlayerWorldPosition>();
-        }
-
-        if (playerTransform.GetComponent<PlayerStats>() == null)
-        {
-            playerTransform.gameObject.AddComponent<PlayerStats>();
-        }
-
     }
 
     bool TryGetSpawnCenter(out Vector3 center)
     {
-        if (playerTransform != null)
-        {
-            PlayerMovement movement = playerTransform.GetComponent<PlayerMovement>();
-            if (movement != null)
-            {
-                center = PlayerMovement.LastWorldCenter;
-                center.y = groundHeight;
-                return true;
-            }
-        }
-
-        if (PlayerWorldPosition.TryGetWorldCenter(groundHeight, out center))
+        if (GameSession.TryGetPlayerWorldCenter(out center))
         {
             return true;
         }
@@ -219,7 +188,7 @@ public class MonsterSpawner : MonoBehaviour
         }
 
         center = playerTransform.position;
-        center.y = groundHeight;
+        center.y = GroundHeightSampler.GetCharacterSurfaceY(center, GameSession.GroundY);
         return true;
     }
 
@@ -247,6 +216,8 @@ public class MonsterSpawner : MonoBehaviour
         }
 
         instance.transform.SetPositionAndRotation(spawnPosition, Quaternion.identity);
+        GroundHeightSampler.SnapTransformToSurface(instance.transform, spawnPosition.y);
+        spawnPosition = instance.transform.position;
         instance.name = prefab.name + "_Spawned";
         SetupSpawnedMonster(instance, spawnPosition, row);
         return true;
@@ -259,6 +230,12 @@ public class MonsterSpawner : MonoBehaviour
 
         if (spawnPool.Count > 0)
         {
+            if (TryPickWeightedSpawnKind(out MonsterKind targetKind)
+                && TryPickSpawnEntryByKind(targetKind, out row, out prefab))
+            {
+                return true;
+            }
+
             int attempts = spawnPool.Count * 2;
             for (int i = 0; i < attempts; i++)
             {
@@ -284,6 +261,68 @@ public class MonsterSpawner : MonoBehaviour
 
         row = default;
         return true;
+    }
+
+    bool TryPickWeightedSpawnKind(out MonsterKind kind)
+    {
+        kind = MonsterKind.Melee;
+        float melee = Mathf.Max(0f, meleeSpawnWeight);
+        float ranged = Mathf.Max(0f, rangedSpawnWeight);
+        float mage = Mathf.Max(0f, mageSpawnWeight);
+        float total = melee + ranged + mage;
+        if (total <= 0.0001f)
+        {
+            return false;
+        }
+
+        float roll = Random.Range(0f, total);
+        if (roll < melee)
+        {
+            kind = MonsterKind.Melee;
+            return true;
+        }
+
+        roll -= melee;
+        if (roll < ranged)
+        {
+            kind = MonsterKind.Ranged;
+            return true;
+        }
+
+        kind = MonsterKind.Mage;
+        return true;
+    }
+
+    bool TryPickSpawnEntryByKind(MonsterKind kind, out MonsterDefinitionRow row, out GameObject prefab)
+    {
+        row = default;
+        prefab = null;
+        if (spawnPool.Count == 0)
+        {
+            return false;
+        }
+
+        int start = Random.Range(0, spawnPool.Count);
+        for (int offset = 0; offset < spawnPool.Count; offset++)
+        {
+            MonsterDefinitionRow candidate = spawnPool[(start + offset) % spawnPool.Count];
+            if (candidate.kind != kind)
+            {
+                continue;
+            }
+
+            if (!prefabsByName.TryGetValue(candidate.prefabName, out GameObject candidatePrefab)
+                || candidatePrefab == null)
+            {
+                continue;
+            }
+
+            row = candidate;
+            prefab = candidatePrefab;
+            return true;
+        }
+
+        return false;
     }
 
     GameObject PickRandomPrefabWithoutTable()
@@ -323,14 +362,14 @@ public class MonsterSpawner : MonoBehaviour
                     candidate = playerCenter + Vector3.forward * minSpawnDistanceFromPlayer;
                 }
 
-                candidate.y = groundHeight;
+                candidate.y = GroundHeightSampler.GetCharacterSurfaceY(candidate, GameSession.GroundY);
             }
 
             if (MonsterSpawnPlacement.TryResolveClearPosition(
                     candidate,
                     monsterSpawnRadius,
                     monsterSpawnHeight,
-                    groundHeight,
+                    candidate.y,
                     out spawnPosition))
             {
                 return true;
@@ -368,12 +407,15 @@ public class MonsterSpawner : MonoBehaviour
 
         float x = playerCenter.x + Mathf.Cos(angle) * distance;
         float z = playerCenter.z + Mathf.Sin(angle) * distance;
-        return new Vector3(x, groundHeight, z);
+        Vector3 spawnXZ = new Vector3(x, 0f, z);
+        float groundY = GroundHeightSampler.GetCharacterSurfaceY(spawnXZ, GameSession.GroundY);
+        return new Vector3(x, groundY, z);
     }
 
     void SetupSpawnedMonster(GameObject monster, Vector3 spawnPosition, MonsterDefinitionRow row)
     {
         WorldCollision.ApplyMonster(monster);
+        GameplayComponents.EnsureMonster(monster, logIfMissing: true);
 
         RectTransform rectTransform = monster.GetComponent<RectTransform>();
         if (rectTransform != null)
@@ -381,31 +423,7 @@ public class MonsterSpawner : MonoBehaviour
             rectTransform.position = spawnPosition;
         }
 
-        if (monster.GetComponent<MonsterMovement>() == null)
-        {
-            monster.AddComponent<MonsterMovement>();
-        }
-
-        if (monster.GetComponent<MonsterHealth>() == null)
-        {
-            monster.AddComponent<MonsterHealth>();
-        }
-
-        if (monster.GetComponent<MonsterHitReaction>() == null)
-        {
-            monster.AddComponent<MonsterHitReaction>();
-        }
-
-        if (monster.GetComponent<MonsterAttack>() == null)
-        {
-            monster.AddComponent<MonsterAttack>();
-        }
-
         MonsterFarDespawn farDespawn = monster.GetComponent<MonsterFarDespawn>();
-        if (farDespawn == null)
-        {
-            farDespawn = monster.AddComponent<MonsterFarDespawn>();
-        }
 
         if (row.monId != 0)
         {
@@ -417,12 +435,9 @@ public class MonsterSpawner : MonoBehaviour
             MonsterStats.Apply(monster, fallbackRow);
         }
 
-        farDespawn.NotifySpawned(spawnRadiusMax + 12f);
-
-        Transform unitRoot = monster.transform.Find("UnitRoot");
-        if (unitRoot != null && unitRoot.GetComponent<BillboardFaceCamera>() == null)
+        if (farDespawn != null)
         {
-            unitRoot.gameObject.AddComponent<BillboardFaceCamera>();
+            farDespawn.NotifySpawned(spawnRadiusMax + 12f);
         }
     }
 
@@ -484,31 +499,7 @@ public class MonsterSpawner : MonoBehaviour
 
     void EnsureMonsterPrefabs()
     {
-        if (monsterPrefabs != null && monsterPrefabs.Length > 0)
-        {
-            bool hasAny = false;
-            for (int i = 0; i < monsterPrefabs.Length; i++)
-            {
-                if (monsterPrefabs[i] != null)
-                {
-                    hasAny = true;
-                    break;
-                }
-            }
-
-            if (hasAny)
-            {
-                return;
-            }
-        }
-
-#if UNITY_EDITOR
-        monsterPrefabs = new GameObject[DefaultPrefabPaths.Length];
-        for (int i = 0; i < DefaultPrefabPaths.Length; i++)
-        {
-            monsterPrefabs[i] = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultPrefabPaths[i]);
-        }
-#endif
+        monsterPrefabs = GameAssets.LoadDefaultMonsterPrefabs(monsterPrefabs);
     }
 
 #if UNITY_EDITOR
@@ -531,6 +522,13 @@ public class MonsterSpawner : MonoBehaviour
 
         minSpawnDistanceFromPlayer = Mathf.Max(0f, minSpawnDistanceFromPlayer);
         spawnRadiusMin = Mathf.Max(minSpawnDistanceFromPlayer, spawnRadiusMin);
+        meleeSpawnWeight = Mathf.Max(0f, meleeSpawnWeight);
+        rangedSpawnWeight = Mathf.Max(0f, rangedSpawnWeight);
+        mageSpawnWeight = Mathf.Max(0f, mageSpawnWeight);
+        if (meleeSpawnWeight + rangedSpawnWeight + mageSpawnWeight <= 0.0001f)
+        {
+            meleeSpawnWeight = 1f;
+        }
     }
 #endif
 }

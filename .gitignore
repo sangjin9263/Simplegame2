@@ -56,3 +56,8 @@ sysinfo.txt
 
 # Keep meta files
 !*.meta
+
+# Large source asset packs (local only)
+Assets/Store/
+Assets/Store.meta
+*.psd

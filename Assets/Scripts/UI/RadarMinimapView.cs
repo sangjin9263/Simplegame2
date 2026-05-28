@@ -18,7 +18,7 @@ public class RadarMinimapView : MonoBehaviour
     readonly List<RectTransform> monsterBlipPool = new List<RectTransform>();
     Transform playerTransform;
     Camera viewCamera;
-    MonsterHealth[] scannedMonsters = System.Array.Empty<MonsterHealth>();
+    readonly List<MonsterHealth> scannedMonsters = new List<MonsterHealth>();
     float nextMonsterScanTime;
     bool poolReady;
 
@@ -34,6 +34,8 @@ public class RadarMinimapView : MonoBehaviour
         EnsureBlipPool();
         BindPlayer();
         BindReferencesIfNeeded();
+        MonsterRegistry.CopyAliveSnapshot(scannedMonsters);
+        nextMonsterScanTime = Time.unscaledTime + monsterScanInterval;
     }
 
     void BindReferencesIfNeeded()
@@ -74,7 +76,7 @@ public class RadarMinimapView : MonoBehaviour
 
         if (Time.unscaledTime >= nextMonsterScanTime)
         {
-            scannedMonsters = FindObjectsByType<MonsterHealth>(FindObjectsSortMode.None);
+            MonsterRegistry.CopyAliveSnapshot(scannedMonsters);
             nextMonsterScanTime = Time.unscaledTime + monsterScanInterval;
         }
 
@@ -88,14 +90,13 @@ public class RadarMinimapView : MonoBehaviour
             return true;
         }
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
+        if (GameSession.TryGetPlayerTransform(out Transform player))
         {
-            return false;
+            playerTransform = player;
+            return true;
         }
 
-        playerTransform = playerObject.transform;
-        return true;
+        return false;
     }
 
     void RefreshMonsterBlips()
@@ -105,7 +106,7 @@ public class RadarMinimapView : MonoBehaviour
         Vector3 playerPosition = GetPlayerWorldCenter();
         int visibleCount = 0;
 
-        for (int i = 0; i < scannedMonsters.Length; i++)
+        for (int i = 0; i < scannedMonsters.Count; i++)
         {
             MonsterHealth monster = scannedMonsters[i];
             if (monster == null || monster.IsDead)
@@ -142,10 +143,9 @@ public class RadarMinimapView : MonoBehaviour
 
     Vector3 GetPlayerWorldCenter()
     {
-        PlayerMovement movement = playerTransform.GetComponent<PlayerMovement>();
-        if (movement != null)
+        if (GameSession.TryGetPlayerWorldCenter(out Vector3 center))
         {
-            return movement.GroundWorldPosition;
+            return center;
         }
 
         return playerTransform.position;
@@ -234,12 +234,35 @@ public class RadarMinimapView : MonoBehaviour
             return;
         }
 
+        RemoveStaleMonsterBlipsFromHierarchy();
+
         for (int i = 0; i < maxMonsterBlips; i++)
         {
             monsterBlipPool.Add(CreateMonsterBlip(i));
         }
 
         poolReady = true;
+    }
+
+    void RemoveStaleMonsterBlipsFromHierarchy()
+    {
+        for (int i = blipsRoot.childCount - 1; i >= 0; i--)
+        {
+            Transform child = blipsRoot.GetChild(i);
+            if (!child.name.StartsWith("MonsterBlip_"))
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(child.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(child.gameObject);
+            }
+        }
     }
 
     RectTransform CreateMonsterBlip(int index)

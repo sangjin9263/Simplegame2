@@ -1,10 +1,10 @@
 using UnityEngine;
 
-// 플레이어에 PlayerStats를 보장합니다 (HUD와 무관하게 CSV 적용).
+// 씬 로드 후 플레이어를 GameSession에 연결합니다.
 public static class PlayerStatsBootstrap
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void EnsurePlayerStats()
+    static void EnsureSessionPlayer()
     {
         GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
         if (playerObject == null)
@@ -12,9 +12,27 @@ public static class PlayerStatsBootstrap
             return;
         }
 
-        if (playerObject.GetComponent<PlayerStats>() == null)
+        EnsureRequiredPlayerComponents(playerObject);
+
+        PlayerMovement movement = playerObject.GetComponent<PlayerMovement>();
+        if (movement != null)
         {
-            playerObject.AddComponent<PlayerStats>();
+            GameSession.RegisterPlayer(movement);
+        }
+
+        GameplayComponents.EnsurePlayer(playerObject, logIfMissing: false);
+    }
+
+    static void EnsureRequiredPlayerComponents(GameObject playerObject)
+    {
+        if (playerObject.GetComponent<PlayerRangedCombat>() == null)
+        {
+            playerObject.AddComponent<PlayerRangedCombat>();
+        }
+
+        if (playerObject.GetComponent<PlayerMagicCombat>() == null)
+        {
+            playerObject.AddComponent<PlayerMagicCombat>();
         }
     }
 }

@@ -23,15 +23,14 @@ public static class MonsterSpawnPlacement
     public static bool IsSpawnClear(
         Vector3 feetPosition,
         float radius,
-        float height,
-        float groundY)
+        float height)
     {
         if (WorldCollision.QueryLayerMask == 0)
         {
             return true;
         }
 
-        GetCapsuleEnds(feetPosition, radius, height, groundY, out Vector3 bottom, out Vector3 top);
+        GetCapsuleEnds(feetPosition, radius, height, out Vector3 bottom, out Vector3 top);
 
         Collider[] overlaps = Physics.OverlapCapsule(
             bottom,
@@ -55,9 +54,10 @@ public static class MonsterSpawnPlacement
         Vector3 candidate,
         float radius,
         float height,
-        float groundY,
+        float fallbackGroundY,
         out Vector3 resolved)
     {
+        float groundY = GroundHeightSampler.GetCharacterSurfaceY(candidate, fallbackGroundY);
         candidate.y = groundY;
         resolved = candidate;
 
@@ -66,9 +66,9 @@ public static class MonsterSpawnPlacement
             Vector3 test = candidate;
             test.x += ClearanceOffsets[i].x;
             test.z += ClearanceOffsets[i].y;
-            test.y = groundY;
+            test.y = GroundHeightSampler.GetCharacterSurfaceY(test, fallbackGroundY);
 
-            if (!IsSpawnClear(test, radius, height, groundY))
+            if (!IsSpawnClear(test, radius, height))
             {
                 continue;
             }
@@ -84,11 +84,9 @@ public static class MonsterSpawnPlacement
         Vector3 feetPosition,
         float radius,
         float height,
-        float groundY,
         out Vector3 bottom,
         out Vector3 top)
     {
-        feetPosition.y = groundY;
         float cylinderHeight = Mathf.Max(height - radius * 2f, 0.05f);
         bottom = feetPosition + Vector3.up * radius;
         top = bottom + Vector3.up * cylinderHeight;

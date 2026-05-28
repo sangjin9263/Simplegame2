@@ -1,46 +1,51 @@
 using UnityEngine;
 
-// WASD로 캐릭터를 움직이고 SPUM 애니메이션을 바꾸는 스크립트입니다.
+// WASD + CharacterController.Move 로 이동합니다 (지형·나무는 물리 캡슐이 처리).
+[RequireComponent(typeof(PlayerWorldPosition))]
+[RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
     [SerializeField] float moveSpeed = 5f;
-    [SerializeField] float groundHeight = 0f;
+    [SerializeField] float gravity = -24f;
+    [SerializeField] float groundedStickForce = 2f;
 
     [SerializeField] float collisionRadius = 0.22f;
     [SerializeField] float collisionHeight = 1.05f;
+    [SerializeField] float slopeLimit = 50f;
+    [SerializeField] float stepOffset = 0.4f;
+
+    [Header("공격 방향")]
+    [SerializeField] float attackAutoAimRange = 14f;
+    [SerializeField] float attackAutoAimMaxHeightDelta = 1.2f;
 
     [SerializeField] SPUM_Prefabs spumPrefabs;
     [SerializeField] Transform spriteRoot;
 
     Camera mainCamera;
     SpumLocomotionAnimation locomotionAnimation;
+    CharacterController characterController;
     int lastFlipSide;
     Vector3 lastMoveDirection;
+    Vector3 worldCenter;
+    float verticalVelocity;
 
-    CapsuleMotor.Settings motorSettings;
+    PlayerWorldPosition worldPositionTracker;
+    PlayerWeaponCombat weaponCombat;
 
-    // 스폰·AI·디스폰용 — 매 프레임 갱신되는 플레이어 월드 좌표입니다.
-    public static Vector3 LastWorldCenter { get; private set; }
-
+    public Vector3 WorldCenter => worldCenter;
     public SpumLocomotionAnimation LocomotionAnimation => locomotionAnimation;
     public int LastFlipSide => lastFlipSide;
 
-    public Vector3 GroundWorldPosition
-    {
-        get
-        {
-            if (PlayerWorldPosition.TryGetWorldCenter(groundHeight, out Vector3 center))
-            {
-                return center;
-            }
+    public Vector3 GroundWorldPosition => worldCenter;
 
-            return ReadWorldCenterFromTransform();
-        }
-    }
-
-    // 검기가 나갈 방향: 이동 입력 → 마지막 이동 → 바라보는 좌우.
     public Vector3 GetAttackDirection()
     {
+        if (TryGetAutoAimAttackDirection(out Vector3 autoAimDirection))
+        {
+            lastMoveDirection = autoAimDirection;
+            return autoAimDirection;
+        }
+
         Vector3 inputDirection = ReadMoveInput();
         Vector3 moveDirection = GetCameraRelativeDirection(inputDirection);
         if (moveDirection.sqrMagnitude > 0.0001f)
@@ -80,7 +85,29 @@ public class PlayerMovement : MonoBehaviour
         return transform.forward;
     }
 
-    // 공격 시 검기 방향에 맞춰 좌우 반전합니다 (대각 포함).
+    bool TryGetAutoAimAttackDirection(out Vector3 direction)
+    {
+        direction = Vector3.zero;
+        if (attackAutoAimRange <= 0f)
+        {
+            return false;
+        }
+
+        Vector3 origin = worldCenter;
+        if (origin.sqrMagnitude < 0.0001f)
+        {
+            origin = transform.position;
+        }
+
+        float referenceSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(origin, GameSession.GroundY);
+        return MonsterRegistry.TryGetNearestAliveFlatDirection(
+            origin,
+            attackAutoAimRange,
+            attackAutoAimMaxHeightDelta,
+            referenceSurfaceY,
+            out direction);
+    }
+
     public void ApplyFacingForDirection(Vector3 facingDirection)
     {
         Transform flipTarget = spumPrefabs != null ? spumPrefabs.transform : spriteRoot;
@@ -96,14 +123,11 @@ public class PlayerMovement : MonoBehaviour
 
     void Awake()
     {
-        motorSettings = new CapsuleMotor.Settings
-        {
-            radius = collisionRadius,
-            height = collisionHeight,
-            groundY = groundHeight,
-            skin = 0.015f,
-            embeddedIgnoreDistance = 0.05f
-        };
+        GameSession.RegisterPlayer(this);
+        worldPositionTracker = GetComponent<PlayerWorldPosition>();
+        weaponCombat = GetComponent<PlayerWeaponCombat>();
+        characterController = GetComponent<CharacterController>();
+        ApplyCharacterControllerSettings();
     }
 
     void Start()
@@ -130,33 +154,23 @@ public class PlayerMovement : MonoBehaviour
             }
         }
 
-        SnapToGroundHeight();
-        EnsureWorldPositionTracker();
-        UpdateLastWorldCenter();
-    }
-
-    void EnsureWorldPositionTracker()
-    {
-        if (GetComponent<PlayerWorldPosition>() == null)
-        {
-            gameObject.AddComponent<PlayerWorldPosition>();
-        }
+        SnapToGroundOnLoad();
+        RefreshWorldCenter();
     }
 
     void LateUpdate()
     {
-        UpdateLastWorldCenter();
+        RefreshWorldCenter();
 
-        PlayerWorldPosition tracker = GetComponent<PlayerWorldPosition>();
-        if (tracker != null)
+        if (worldPositionTracker != null)
         {
-            tracker.Refresh();
+            worldPositionTracker.SyncFromMovement(worldCenter);
         }
     }
 
-    void UpdateLastWorldCenter()
+    void RefreshWorldCenter()
     {
-        LastWorldCenter = ReadWorldCenterFromTransform();
+        worldCenter = transform.position;
     }
 
     void Update()
@@ -165,24 +179,19 @@ public class PlayerMovement : MonoBehaviour
         Vector3 moveDirection = GetCameraRelativeDirection(inputDirection);
         bool wantsToMove = moveDirection.sqrMagnitude > 0.0001f;
 
+        Vector3 moveDirectionFlat = moveDirection;
+        moveDirectionFlat.y = 0f;
+
         if (wantsToMove)
         {
-            lastMoveDirection = moveDirection.normalized;
-
-            CapsuleMotor.Move(
-                transform,
-                moveDirection * moveSpeed * Time.deltaTime,
-                motorSettings,
-                transform,
-                MoverRole.Player);
-
-            ApplyWorldPositionAfterMove();
+            lastMoveDirection = moveDirectionFlat.normalized;
 
             Transform flipTarget = spumPrefabs != null ? spumPrefabs.transform : spriteRoot;
-            SpumSpriteFlip.ApplyByMoveDirection(flipTarget, moveDirection, ref lastFlipSide);
+            SpumSpriteFlip.ApplyByMoveDirection(flipTarget, moveDirectionFlat, ref lastFlipSide);
         }
 
-        PlayerWeaponCombat weaponCombat = GetComponent<PlayerWeaponCombat>();
+        ApplyCharacterControllerMove(moveDirectionFlat);
+
         if (weaponCombat != null && weaponCombat.IsAttacking)
         {
             return;
@@ -192,6 +201,86 @@ public class PlayerMovement : MonoBehaviour
         {
             locomotionAnimation.SetMoving(wantsToMove);
         }
+    }
+
+    // 월드 로딩 직후·게이트 해제 시 발 위치를 지면에 맞춥니다.
+    public void SnapToGroundOnLoad()
+    {
+        if (characterController == null)
+        {
+            characterController = GetComponent<CharacterController>();
+            ApplyCharacterControllerSettings();
+        }
+
+        Vector3 position = transform.position;
+        if (TryFindGroundY(position, out float groundY))
+        {
+            position.y = groundY;
+        }
+
+        bool wasEnabled = characterController.enabled;
+        characterController.enabled = false;
+        transform.position = position;
+        Physics.SyncTransforms();
+        characterController.enabled = wasEnabled;
+        verticalVelocity = 0f;
+    }
+
+    void ApplyCharacterControllerMove(Vector3 moveDirectionFlat)
+    {
+        if (characterController == null)
+        {
+            return;
+        }
+
+        if (characterController.isGrounded && verticalVelocity < 0f)
+        {
+            verticalVelocity = -groundedStickForce;
+        }
+        else
+        {
+            verticalVelocity += gravity * Time.deltaTime;
+        }
+
+        Vector3 horizontal = moveDirectionFlat * moveSpeed;
+        Vector3 motion = (horizontal + Vector3.up * verticalVelocity) * Time.deltaTime;
+        characterController.Move(motion);
+    }
+
+    void ApplyCharacterControllerSettings()
+    {
+        if (characterController == null)
+        {
+            return;
+        }
+
+        characterController.height = collisionHeight;
+        characterController.radius = collisionRadius;
+        characterController.center = new Vector3(0f, collisionHeight * 0.5f, 0f);
+        characterController.slopeLimit = slopeLimit;
+        characterController.stepOffset = stepOffset;
+        characterController.skinWidth = 0.02f;
+        characterController.minMoveDistance = 0f;
+    }
+
+    static bool TryFindGroundY(Vector3 worldPosition, out float groundY)
+    {
+        groundY = worldPosition.y;
+        int mask = GroundHeightSampler.GroundLayerMask;
+        if (mask == 0)
+        {
+            return GroundHeightSampler.TryGetSurfaceY(worldPosition, GameSession.GroundY, out groundY);
+        }
+
+        Vector3 origin = worldPosition + Vector3.up * 4f;
+        if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 12f, mask, QueryTriggerInteraction.Ignore)
+            && GroundHeightSampler.IsWalkableGroundCollider(hit.collider))
+        {
+            groundY = hit.point.y;
+            return true;
+        }
+
+        return GroundHeightSampler.TryGetSurfaceY(worldPosition, GameSession.GroundY, out groundY);
     }
 
     Vector3 ReadMoveInput()
@@ -244,53 +333,5 @@ public class PlayerMovement : MonoBehaviour
         right.Normalize();
 
         return forward * inputDirection.z + right * inputDirection.x;
-    }
-
-    void SnapToGroundHeight()
-    {
-        ApplyWorldPosition(ReadWorldCenterFromTransform());
-    }
-
-    void ApplyWorldPositionAfterMove()
-    {
-        ApplyWorldPosition(ReadWorldCenterFromTransform());
-
-        PlayerWorldPosition tracker = GetComponent<PlayerWorldPosition>();
-        if (tracker != null)
-        {
-            tracker.Refresh();
-        }
-    }
-
-    void ApplyWorldPosition(Vector3 worldPosition)
-    {
-        worldPosition.y = groundHeight;
-
-        if (transform is RectTransform rectTransform)
-        {
-            rectTransform.position = worldPosition;
-            return;
-        }
-
-        transform.position = worldPosition;
-    }
-
-    Vector3 ReadWorldCenterFromTransform()
-    {
-        Transform target = transform;
-        Transform unitRoot = transform.Find("UnitRoot");
-        if (unitRoot != null)
-        {
-            target = unitRoot;
-        }
-
-        Vector3 position = target.position;
-        if (target is RectTransform rectTransform)
-        {
-            position = rectTransform.TransformPoint(Vector3.zero);
-        }
-
-        position.y = groundHeight;
-        return position;
     }
 }

@@ -45,8 +45,6 @@ public static class PlayerHudUiLayoutFactory
         RadarMinimapView minimapView = BuildRadarMinimap(canvasRect);
         GameSessionHudView sessionView = BuildSessionHud(canvasRect, font, sprite);
         PlayerStatusHudView statusView = BuildStatusPanel(canvasRect, font, sprite, root);
-        BuildInventoryPlaceholders(canvasRect, font, sprite);
-
         return new BuiltHud
         {
             root = root,
@@ -171,46 +169,6 @@ public static class PlayerHudUiLayoutFactory
         GameSessionHudView sessionView = sessionRoot.GetComponent<GameSessionHudView>();
         sessionView.Configure(timerText, killValue);
         return sessionView;
-    }
-
-    public static void BuildInventoryPlaceholders(RectTransform canvasRect, Font font = null, Sprite sprite = null)
-    {
-        font ??= Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        sprite ??= HudUiSprites.White;
-
-        GameObject inventoryPanel = new GameObject("InventoryPanel", typeof(RectTransform));
-        inventoryPanel.transform.SetParent(canvasRect, false);
-        RectTransform inventoryRect = inventoryPanel.GetComponent<RectTransform>();
-        inventoryRect.anchorMin = new Vector2(1f, 0f);
-        inventoryRect.anchorMax = new Vector2(1f, 1f);
-        inventoryRect.pivot = new Vector2(1f, 0.5f);
-        inventoryRect.anchoredPosition = new Vector2(-20f, 0f);
-        inventoryRect.sizeDelta = new Vector2(300f, -48f);
-
-        Image inventoryBackground = CreateImage("Background", inventoryRect, sprite, new Color(0.08f, 0.1f, 0.14f, 0.55f));
-        StretchFull(inventoryBackground.rectTransform);
-
-        Text inventoryLabel = CreateText("Label", inventoryRect, font, 22, TextAnchor.MiddleCenter);
-        StretchFull(inventoryLabel.rectTransform);
-        inventoryLabel.text = "인벤토리 UI";
-        inventoryLabel.color = new Color(0.9f, 0.92f, 0.96f, 0.9f);
-
-        GameObject toggleObject = new GameObject("InventoryToggle", typeof(RectTransform));
-        toggleObject.transform.SetParent(canvasRect, false);
-        RectTransform toggleRect = toggleObject.GetComponent<RectTransform>();
-        toggleRect.anchorMin = new Vector2(1f, 0f);
-        toggleRect.anchorMax = new Vector2(1f, 0f);
-        toggleRect.pivot = new Vector2(1f, 0f);
-        toggleRect.anchoredPosition = new Vector2(-20f, 20f);
-        toggleRect.sizeDelta = new Vector2(96f, 40f);
-
-        Image toggleBackground = CreateImage("Background", toggleRect, sprite, new Color(0.12f, 0.16f, 0.22f, 0.9f));
-        StretchFull(toggleBackground.rectTransform);
-
-        Text toggleLabel = CreateText("Label", toggleRect, font, 16, TextAnchor.MiddleCenter);
-        StretchFull(toggleLabel.rectTransform);
-        toggleLabel.text = "인벤토리";
-        toggleLabel.fontStyle = FontStyle.Bold;
     }
 
     static PlayerStatusHudView BuildStatusPanel(RectTransform canvasRect, Font font, Sprite sprite, GameObject root)

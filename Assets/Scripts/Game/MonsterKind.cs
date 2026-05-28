@@ -1,7 +1,9 @@
-// CSV mon_type — 0 일반, 1 정예, 2 보스.
+// CSV mon_type — 0 없음, 1 근접, 2 원거리, 3 마법사, 4 보스.
 public enum MonsterKind
 {
-    Normal = 0,
-    Elite = 1,
-    Boss = 2
+    None = 0,
+    Melee = 1,
+    Ranged = 2,
+    Mage = 3,
+    Boss = 4
 }

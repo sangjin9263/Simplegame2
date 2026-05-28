@@ -42,6 +42,11 @@ public class PlayerGameplayStartGate : MonoBehaviour
         if (playerMovement != null)
         {
             playerMovement.enabled = !locked;
+
+            if (!locked)
+            {
+                playerMovement.SnapToGroundOnLoad();
+            }
         }
 
         if (!hideVisualUntilWorldReady || cachedRenderers == null)

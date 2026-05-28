@@ -176,12 +176,6 @@ public class PlayerHpHudView : MonoBehaviour
 
     static PlayerHealth FindPlayerHealth()
     {
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
-        {
-            return null;
-        }
-
-        return playerObject.GetComponent<PlayerHealth>();
+        return GameSession.PlayerHealth;
     }
 }

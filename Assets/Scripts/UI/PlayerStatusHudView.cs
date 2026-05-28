@@ -77,16 +77,15 @@ public class PlayerStatusHudView : MonoBehaviour
             playerStats.OnStatsChanged -= Refresh;
         }
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
+        playerStats = GameSession.PlayerStats;
+        if (playerStats == null && GameSession.TryGetPlayerTransform(out Transform player))
         {
-            return;
+            playerStats = player.GetComponent<PlayerStats>();
         }
 
-        playerStats = playerObject.GetComponent<PlayerStats>();
         if (playerStats == null)
         {
-            playerStats = playerObject.AddComponent<PlayerStats>();
+            return;
         }
 
         playerStats.OnStatsChanged += Refresh;

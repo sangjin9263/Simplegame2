@@ -1,106 +1,234 @@
 using System.Collections;
+
 using UnityEngine;
 
+
+
 // 맵에 무기 줍기 오브젝트를 배치합니다.
+
 public class WeaponPickupSpawner : MonoBehaviour
+
 {
-    const string DefaultWeaponSpritePath = "Assets/Weapon/New_Weapon_06.png";
 
-    [SerializeField] Sprite weaponSprite;
-    [SerializeField] float groundHeight = 0f;
+    [SerializeField] Sprite meleeWeaponSprite;
 
-    [Header("스폰 위치 (플레이어 시작 근처에서 보기 쉬운 곳)")]
-    [SerializeField] Vector3[] spawnPositions =
+    [SerializeField] Sprite bowWeaponSprite;
+    [SerializeField] Sprite staffWeaponSprite;
+
+
+
+    [Header("근접 무기 스폰 위치")]
+
+    [SerializeField] Vector3[] meleeSpawnPositions =
+
     {
+
         new Vector3(4f, 0f, 2f),
-        new Vector3(-4f, 0f, 3f),
-        new Vector3(6f, 0f, -3f)
+
+        new Vector3(-4f, 0f, 3f)
+
     };
 
-    void Start()
+
+
+    [Header("활 스폰 위치")]
+
+    [SerializeField] Vector3[] bowSpawnPositions =
+
     {
-        EnsurePlayerWeaponCombat();
+
+        new Vector3(6f, 0f, -3f)
+
+    };
+
+    [Header("스태프 스폰 위치")]
+    [SerializeField] Vector3[] staffSpawnPositions =
+    {
+        new Vector3(-6f, 0f, -3f)
+    };
+
+
+
+    void Start()
+
+    {
+
+        ValidatePlayerSetup();
+
         StartCoroutine(SpawnPickupsWhenWorldReady());
+
     }
+
+
 
     IEnumerator SpawnPickupsWhenWorldReady()
+
     {
+
         yield return WorldLoadCoordinator.WaitUntilWorldReady();
-        EnsureWeaponSprite();
 
-        if (weaponSprite == null)
+        EnsureWeaponSprites();
+
+
+
+        PlayerWeaponCombat weaponCombat = GameSession.PlayerWeaponCombat;
+
+        if (weaponCombat != null)
+
         {
-            Debug.LogWarning("[WeaponPickupSpawner] weaponSprite가 비어 있습니다. Inspector에 New_Weapon_06를 넣어 주세요.");
-            yield break;
+
+            weaponCombat.EnsureSlashVfxPrefab();
+
         }
 
-        for (int i = 0; i < spawnPositions.Length; i++)
+
+
+        PlayerRangedCombat rangedCombat = GameSession.PlayerRangedCombat;
+
+        if (rangedCombat != null)
+
         {
-            SpawnPickup(spawnPositions[i]);
+
+            rangedCombat.EnsureWeaponAssets();
+
         }
+
+        PlayerMagicCombat magicCombat = GameSession.PlayerMagicCombat;
+        if (magicCombat != null)
+        {
+            magicCombat.EnsureMagicAssets();
+        }
+
+
+
+        if (meleeWeaponSprite != null)
+
+        {
+
+            for (int i = 0; i < meleeSpawnPositions.Length; i++)
+
+            {
+
+                SpawnPickup(WeaponPickupKind.Melee, meleeWeaponSprite, meleeSpawnPositions[i]);
+
+            }
+
+        }
+
+
+
+        if (bowWeaponSprite != null)
+
+        {
+
+            for (int i = 0; i < bowSpawnPositions.Length; i++)
+
+            {
+
+                SpawnPickup(WeaponPickupKind.Bow, bowWeaponSprite, bowSpawnPositions[i]);
+
+            }
+
+        }
+
+        if (staffWeaponSprite != null)
+        {
+            for (int i = 0; i < staffSpawnPositions.Length; i++)
+            {
+                SpawnPickup(WeaponPickupKind.Staff, staffWeaponSprite, staffSpawnPositions[i]);
+            }
+        }
+
     }
 
-    void EnsurePlayerWeaponCombat()
+
+
+    void ValidatePlayerSetup()
+
     {
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
+
+        if (!GameSession.TryGetPlayerTransform(out Transform player))
+
         {
+
             return;
+
         }
 
-        PlayerWeaponCombat weaponCombat = playerObject.GetComponent<PlayerWeaponCombat>();
-        if (weaponCombat == null)
+
+
+        if (player.GetComponent<PlayerRangedCombat>() == null)
         {
-            weaponCombat = playerObject.AddComponent<PlayerWeaponCombat>();
+            player.gameObject.AddComponent<PlayerRangedCombat>();
+            GameSession.RegisterPlayer(player.GetComponent<PlayerMovement>());
         }
 
-        weaponCombat.EnsureSlashVfxPrefab();
-
-        if (playerObject.GetComponent<PlayerMovement>() == null)
+        if (player.GetComponent<PlayerMagicCombat>() == null)
         {
-            playerObject.AddComponent<PlayerMovement>();
+            player.gameObject.AddComponent<PlayerMagicCombat>();
+            GameSession.RegisterPlayer(player.GetComponent<PlayerMovement>());
         }
 
-        if (playerObject.GetComponent<PlayerWorldPosition>() == null)
-        {
-            playerObject.AddComponent<PlayerWorldPosition>();
-        }
-
-        if (playerObject.GetComponent<PlayerStats>() == null)
-        {
-            playerObject.AddComponent<PlayerStats>();
-        }
+        GameplayComponents.EnsurePlayer(player.gameObject, logIfMissing: true);
 
     }
 
-    void EnsureWeaponSprite()
+
+
+    void EnsureWeaponSprites()
+
     {
-        if (weaponSprite != null)
+
+        meleeWeaponSprite = GameAssets.LoadDefaultWeaponSprite(meleeWeaponSprite);
+
+        bowWeaponSprite = GameAssets.LoadBowSprite(bowWeaponSprite);
+        staffWeaponSprite = GameAssets.LoadStaffSprite(staffWeaponSprite);
+
+    }
+
+
+
+    void SpawnPickup(WeaponPickupKind kind, Sprite sprite, Vector3 localPosition)
+
+    {
+
+        if (sprite == null)
+
         {
+
             return;
+
         }
 
-#if UNITY_EDITOR
-        weaponSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(DefaultWeaponSpritePath);
-#endif
-    }
 
-    void SpawnPickup(Vector3 spawnPosition)
-    {
-        Vector3 worldPosition = spawnPosition;
-        worldPosition.y = groundHeight;
 
-        GameObject pickupObject = new GameObject("WeaponPickup_New_Weapon_06");
+        Vector3 worldPosition = localPosition;
+
+        worldPosition.y = GroundHeightSampler.GetSurfaceY(worldPosition, GameSession.GroundY);
+
+
+
+        string objectName = "MeleeWeaponPickup";
+        if (kind == WeaponPickupKind.Bow)
+        {
+            objectName = "BowPickup";
+        }
+        else if (kind == WeaponPickupKind.Staff)
+        {
+            objectName = "StaffPickup";
+        }
+
+        GameObject pickupObject = new GameObject(objectName);
+
         pickupObject.transform.position = worldPosition;
 
+
+
         WeaponPickup pickup = pickupObject.AddComponent<WeaponPickup>();
-        pickup.Configure(weaponSprite, groundHeight);
+
+        pickup.Configure(kind, sprite, worldPosition.y);
+
     }
 
-#if UNITY_EDITOR
-    void Reset()
-    {
-        EnsureWeaponSprite();
-    }
-#endif
 }
+

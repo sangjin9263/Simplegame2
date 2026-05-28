@@ -1,62 +1,139 @@
 using UnityEngine;
 
-// SPUM 캐릭터 손에 무기 스프라이트를 붙입니다.
+public enum SpumWeaponVisualKind
+{
+    Melee,
+    Bow,
+    Staff
+}
+
+// 픽업 시 Player 하위의 R_Weapon/L_Weapon 스프라이트를 직접 바꿉니다.
 public static class SpumWeaponEquip
 {
-    public static bool TryEquip(SPUM_Prefabs spumPrefabs, Sprite weaponSprite)
+    const int WeaponSortingOrder = 32;
+
+    public static bool TryEquip(SPUM_Prefabs spumPrefabs, Sprite weaponSprite, SpumWeaponVisualKind visualKind)
     {
-        if (spumPrefabs == null || weaponSprite == null)
+        if (weaponSprite == null || !TryResolveSpumPrefabs(ref spumPrefabs))
         {
             return false;
         }
 
-        SpriteRenderer weaponRenderer = FindWeaponSpriteRenderer(spumPrefabs.transform);
-        if (weaponRenderer == null)
+        Transform root = spumPrefabs.transform;
+        SpriteRenderer rightWeapon = FindWeaponRenderer(root, "R_Weapon");
+        SpriteRenderer leftWeapon = FindWeaponRenderer(root, "L_Weapon");
+        if (rightWeapon == null)
+        {
+            // 일부 프리팹은 SPUM_Prefabs가 상위에 있고 무기 슬롯이 다른 자식 트리에 있습니다.
+            rightWeapon = FindWeaponRenderer(spumPrefabs.transform.root, "R_Weapon");
+            leftWeapon = FindWeaponRenderer(spumPrefabs.transform.root, "L_Weapon");
+        }
+        if (rightWeapon == null)
         {
             return false;
         }
 
-        weaponRenderer.sprite = weaponSprite;
-        weaponRenderer.enabled = true;
-        weaponRenderer.gameObject.SetActive(true);
-
-        Transform weaponRoot = weaponRenderer.transform.parent;
-        if (weaponRoot != null)
+        switch (visualKind)
         {
-            weaponRoot.gameObject.SetActive(true);
+            case SpumWeaponVisualKind.Bow:
+                ApplySprite(leftWeapon, weaponSprite);
+                ApplySprite(rightWeapon, weaponSprite);
+                break;
+            case SpumWeaponVisualKind.Staff:
+                ClearSprite(leftWeapon);
+                ApplySprite(rightWeapon, weaponSprite);
+                break;
+            default:
+                ClearSprite(leftWeapon);
+                ApplySprite(rightWeapon, weaponSprite);
+                break;
         }
 
         return true;
     }
 
-    public static void Clear(SPUM_Prefabs spumPrefabs)
+    public static bool TryEquip(SPUM_Prefabs spumPrefabs, Sprite weaponSprite)
     {
-        if (spumPrefabs == null)
-        {
-            return;
-        }
-
-        SpriteRenderer weaponRenderer = FindWeaponSpriteRenderer(spumPrefabs.transform);
-        if (weaponRenderer == null)
-        {
-            return;
-        }
-
-        weaponRenderer.sprite = null;
-        weaponRenderer.enabled = false;
+        return TryEquip(spumPrefabs, weaponSprite, SpumWeaponVisualKind.Melee);
     }
 
-    static SpriteRenderer FindWeaponSpriteRenderer(Transform root)
+    public static void Clear(SPUM_Prefabs spumPrefabs)
+    {
+        if (!TryResolveSpumPrefabs(ref spumPrefabs))
+        {
+            return;
+        }
+
+        Transform root = spumPrefabs.transform;
+        ClearSprite(FindWeaponRenderer(root, "L_Weapon"));
+        ClearSprite(FindWeaponRenderer(root, "R_Weapon"));
+    }
+
+    static bool TryResolveSpumPrefabs(ref SPUM_Prefabs spumPrefabs)
+    {
+        if (spumPrefabs != null)
+        {
+            return true;
+        }
+
+        if (!GameSession.TryGetPlayerTransform(out Transform player))
+        {
+            return false;
+        }
+
+        spumPrefabs = player.GetComponent<SPUM_Prefabs>();
+        if (spumPrefabs == null)
+        {
+            spumPrefabs = player.GetComponentInChildren<SPUM_Prefabs>(true);
+        }
+
+        return spumPrefabs != null;
+    }
+
+    static SpriteRenderer FindWeaponRenderer(Transform root, string nodeName)
     {
         SpriteRenderer[] renderers = root.GetComponentsInChildren<SpriteRenderer>(true);
         for (int i = 0; i < renderers.Length; i++)
         {
-            if (renderers[i].gameObject.name.Contains("Weapon"))
+            if (renderers[i] != null && renderers[i].gameObject.name == nodeName)
             {
                 return renderers[i];
             }
         }
 
         return null;
+    }
+
+    static void ApplySprite(SpriteRenderer renderer, Sprite sprite)
+    {
+        if (renderer == null)
+        {
+            return;
+        }
+
+        renderer.sprite = sprite;
+        renderer.enabled = sprite != null;
+        renderer.sortingOrder = WeaponSortingOrder;
+        renderer.color = Color.white;
+        renderer.gameObject.SetActive(true);
+        if (renderer.transform.parent != null)
+        {
+            renderer.transform.parent.gameObject.SetActive(true);
+        }
+        if (renderer.transform.parent != null && renderer.transform.parent.parent != null)
+        {
+            renderer.transform.parent.parent.gameObject.SetActive(true);
+        }
+    }
+
+    static void ClearSprite(SpriteRenderer renderer)
+    {
+        if (renderer == null)
+        {
+            return;
+        }
+
+        renderer.sprite = null;
+        renderer.enabled = false;
     }
 }

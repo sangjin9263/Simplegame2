@@ -58,13 +58,9 @@ public class ThirdPersonFollowCamera : MonoBehaviour
         }
 
         // followTarget이 비어 있으면 Player를 찾습니다.
-        if (followTarget == null)
+        if (followTarget == null && GameSession.TryGetPlayerTransform(out Transform player))
         {
-            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-            if (playerObject != null)
-            {
-                followTarget = playerObject.transform;
-            }
+            followTarget = player;
         }
 
         // 상하 고정이 켜져 있으면 pitch를 고정값으로 맞춥니다.
@@ -111,13 +107,9 @@ public class ThirdPersonFollowCamera : MonoBehaviour
     void LateUpdate()
     {
         // 따라갈 대상이 없으면 Player를 다시 찾습니다.
-        if (followTarget == null)
+        if (followTarget == null && GameSession.TryGetPlayerTransform(out Transform player))
         {
-            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
-            if (playerObject != null)
-            {
-                followTarget = playerObject.transform;
-            }
+            followTarget = player;
         }
 
         // 대상이 없으면 종료합니다.

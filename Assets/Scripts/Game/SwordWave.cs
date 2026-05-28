@@ -16,7 +16,10 @@ public class SwordWave : MonoBehaviour
         public Vector3 slashVfxRotationOffset;
         public float maxLifetime;
         public int waveDamage;
+        public float maxVerticalHitDelta;
     }
+
+    const float DefaultMaxVerticalHitDelta = 1.2f;
 
     [SerializeField] float waveSpeed = 14f;
     [SerializeField] float waveMaxDistance = 5.5f;
@@ -39,6 +42,7 @@ public class SwordWave : MonoBehaviour
     float traveledDistance;
     float aliveTime;
     int waveDamage = 3;
+    float maxVerticalHitDelta = DefaultMaxVerticalHitDelta;
     readonly HashSet<int> hitMonsterIds = new HashSet<int>();
 
     GameObject vfxInstance;
@@ -77,6 +81,9 @@ public class SwordWave : MonoBehaviour
         slashVfxRotationOffset = settings.slashVfxRotationOffset;
         maxLifetime = settings.maxLifetime;
         waveDamage = settings.waveDamage > 0 ? settings.waveDamage : 3;
+        maxVerticalHitDelta = settings.maxVerticalHitDelta > 0f
+            ? settings.maxVerticalHitDelta
+            : DefaultMaxVerticalHitDelta;
 
         groundHeight = height;
         moveDirection = direction;
@@ -152,20 +159,40 @@ public class SwordWave : MonoBehaviour
                 continue;
             }
 
-            Vector3 monsterPosition = monster.position;
-            monsterPosition.y = 0f;
+            Vector3 monsterWorld = monster.position;
+            float monsterSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(
+                monsterWorld,
+                monsterWorld.y);
+            if (Mathf.Abs(monsterSurfaceY - groundHeight) > maxVerticalHitDelta)
+            {
+                continue;
+            }
 
-            Vector3 toMonster = monsterPosition - hitOrigin;
+            Vector3 monsterPosition = monsterWorld;
+            monsterPosition.y = 0f;
+            Vector3 hitOriginFlat = hitOrigin;
+            hitOriginFlat.y = 0f;
+
+            Vector3 toMonster = monsterPosition - hitOriginFlat;
             float along = Vector3.Dot(toMonster, moveDirection);
             if (along < -halfWidth || along > traveledDistance + halfWidth)
             {
                 continue;
             }
 
-            Vector3 closestPoint = hitOrigin + moveDirection * along;
+            Vector3 closestPoint = hitOriginFlat + moveDirection * along;
             Vector3 sideVector = monsterPosition - closestPoint;
             sideVector.y = 0f;
             if (sideVector.sqrMagnitude > halfWidth * halfWidth)
+            {
+                continue;
+            }
+
+            if (GroundHeightSampler.IsWalkableTerrainBlockingLine(
+                    hitOrigin,
+                    groundHeight,
+                    monsterWorld,
+                    monsterSurfaceY))
             {
                 continue;
             }
@@ -192,7 +219,7 @@ public class SwordWave : MonoBehaviour
                 continue;
             }
 
-            Vector3 knockbackDirection = monsterPosition - hitOrigin;
+            Vector3 knockbackDirection = monsterPosition - hitOriginFlat;
             knockbackDirection.y = 0f;
             if (knockbackDirection.sqrMagnitude < 0.0001f)
             {
@@ -205,10 +232,16 @@ public class SwordWave : MonoBehaviour
 
             if (hitReaction != null)
             {
+                Vector3 impactPosition = monsterWorld;
+                impactPosition.y = monsterSurfaceY + 0.35f;
+                ImpactVfx.SpawnHitImpact(impactPosition);
                 hitReaction.ApplyHit(knockbackDirection, attacker, waveDamage);
             }
             else
             {
+                Vector3 impactPosition = monsterWorld;
+                impactPosition.y = monsterSurfaceY + 0.35f;
+                ImpactVfx.SpawnHitImpact(impactPosition);
                 health.TakeDamage(waveDamage);
             }
 

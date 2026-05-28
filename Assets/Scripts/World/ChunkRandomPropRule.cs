@@ -12,7 +12,7 @@ public class ChunkRandomPropRule
     public GameObject[] prefabs;
 
     // 청크당 최소 개수입니다.
-    public int minCountPerChunk = 0;
+    public int minCountPerChunk = 1;
 
     // 청크당 최대 개수입니다.
     public int maxCountPerChunk = 4;
@@ -20,11 +20,11 @@ public class ChunkRandomPropRule
     // 청크 가장자리에서 안쪽으로 띄울 거리입니다.
     public float edgePadding = 0.8f;
 
-    // 오브젝트끼리 최소 거리입니다 (겹침 방지).
-    public float minDistanceBetweenProps = 1.8f;
+    // 오브젝트끼리 최소 거리입니다 (겹침 방지, 청크 경계 포함).
+    public float minDistanceBetweenProps = 2.2f;
 
-    // 잔디 위 Y 위치입니다 (윗면이 0이면 0).
-    public float positionY = 0f;
+    // 청크 바닥 루트 기준 Y 오프셋입니다 (나무는 보통 ChunkDefinition.GrassSurfaceHeight).
+    public float positionY = ChunkDefinition.GrassSurfaceHeight;
 
     // Y축으로만 랜덤 회전할지 여부입니다.
     public bool randomRotationY = true;
@@ -34,4 +34,10 @@ public class ChunkRandomPropRule
 
     // (0,0) 플레이어 주변 이 반경(미터) 안에는 나무를 안 깝니다.
     public float playerSafeRadius = 5f;
+
+    // Slope 바닥 주변 이 반경(미터) 안에는 나무를 안 깝니다.
+    public float slopeAvoidRadius = 45f;
+
+    // Main_land 와 High_land 경계 주변 이 반경(미터) 안에는 나무를 안 깝니다.
+    public float mainHighBoundaryAvoidRadius = 2.4f;
 }

@@ -218,6 +218,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   chunkSize: 6
   viewRadius: 12
+  worldSettings: {fileID: 0}
   chunkDefinition: {fileID: 11400000, guid: 2f9e8d7c6b5a4938271605f4e3d2c1b0, type: 2}
   fallbackFloorPrefab: {fileID: 0}
   playerTransform: {fileID: 416032187}
@@ -1060,6 +1061,37 @@ MonoBehaviour:
   syncFogColorFromSkybox: 0
   skyboxColorDarken: 1.4
   matchAmbientColors: 1
+--- !u!1 &1836311104
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1836311105}
+  m_Layer: 0
+  m_Name: StaticTerrain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1836311105
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1836311104}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2900001001
 GameObject:
   m_ObjectHideFlags: 0
@@ -1111,11 +1143,11 @@ MonoBehaviour:
   - {fileID: 8994862308045113770, guid: 8ac59f2dfb62dc3448707fc4b40aede2, type: 3}
   - {fileID: 5958397995192207653, guid: c8da602e2492ffe4bb63e6c22c9202e0, type: 3}
   - {fileID: 3817852118433390226, guid: f0c8d567b1e2bc14892fc97e7b374119, type: 3}
+  monsterCsvOverride: {fileID: 0}
   spawnCount: 12
   spawnRadiusMin: 18
   spawnRadiusMax: 28
   octantAngleJitter: 20
-  groundHeight: 0
   minSpawnDistanceFromPlayer: 18
   playerTransform: {fileID: 416032187}
   monstersParent: {fileID: 0}
@@ -1170,12 +1202,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 85963571a7d9f6e4d9e188f2e0a02522, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  weaponSprite: {fileID: 21300000, guid: 35c4c45a7c885cd4bac87769d8e1b1aa, type: 3}
-  groundHeight: 0
-  spawnPositions:
+  meleeWeaponSprite: {fileID: 0}
+  bowWeaponSprite: {fileID: 0}
+  staffWeaponSprite: {fileID: 0}
+  meleeSpawnPositions:
   - {x: 4, y: 0, z: 2}
   - {x: -4, y: 0, z: 3}
+  bowSpawnPositions:
   - {x: 6, y: 0, z: -3}
+  staffSpawnPositions:
+  - {x: -6, y: 0, z: -3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -1185,6 +1221,7 @@ SceneRoots:
   - {fileID: 330585546}
   - {fileID: 187461617}
   - {fileID: 685651897}
+  - {fileID: 1836311105}
   - {fileID: 974616114}
   - {fileID: 416032186}
   - {fileID: 2900001002}

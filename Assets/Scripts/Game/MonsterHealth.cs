@@ -20,7 +20,7 @@ public class MonsterHealth : MonoBehaviour
     MonsterMovement monsterMovement;
     MonsterHitReaction hitReaction;
 
-    MonsterKind kind = MonsterKind.Normal;
+    MonsterKind kind = MonsterKind.Melee;
 
     public bool IsDead => isDead || isDying;
     public int CurrentHp => currentHp;
@@ -52,6 +52,16 @@ public class MonsterHealth : MonoBehaviour
         {
             spumPrefabs = GetComponentInChildren<SPUM_Prefabs>();
         }
+    }
+
+    void OnEnable()
+    {
+        MonsterRegistry.Register(this);
+    }
+
+    void OnDisable()
+    {
+        MonsterRegistry.Unregister(this);
     }
 
     void Start()
@@ -145,13 +155,7 @@ public class MonsterHealth : MonoBehaviour
             return;
         }
 
-        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-        if (playerObject == null)
-        {
-            return;
-        }
-
-        PlayerStats stats = playerObject.GetComponent<PlayerStats>();
+        PlayerStats stats = GameSession.PlayerStats;
         if (stats == null)
         {
             return;

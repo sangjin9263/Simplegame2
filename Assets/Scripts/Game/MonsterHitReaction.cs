@@ -8,29 +8,17 @@ public class MonsterHitReaction : MonoBehaviour
     [SerializeField] float hitFlashDuration = 0.12f;
     [SerializeField] Color hitFlashColor = new Color(1f, 0.25f, 0.25f, 1f);
 
-    [SerializeField] float collisionRadius = 0.22f;
-    [SerializeField] float collisionHeight = 1.05f;
-    [SerializeField] float groundHeight = 0f;
-
     SpriteRenderer[] spriteRenderers;
     Color[] originalColors;
     Coroutine hitRoutine;
 
-    CapsuleMotor.Settings motorSettings;
+    CharacterController characterController;
     MonsterHealth monsterHealth;
 
     void Awake()
     {
-        motorSettings = new CapsuleMotor.Settings
-        {
-            radius = collisionRadius,
-            height = collisionHeight,
-            groundY = groundHeight,
-            skin = 0.015f,
-            embeddedIgnoreDistance = 0.02f
-        };
-
         monsterHealth = GetComponent<MonsterHealth>();
+        characterController = GetComponent<CharacterController>();
         CacheRenderers();
     }
 
@@ -81,12 +69,10 @@ public class MonsterHitReaction : MonoBehaviour
         if (knockbackDirection.sqrMagnitude > 0.0001f)
         {
             knockbackDirection.Normalize();
-            CapsuleMotor.Move(
-                transform,
-                knockbackDirection * knockbackDistance,
-                motorSettings,
-                transform,
-                MoverRole.Monster);
+            if (characterController != null)
+            {
+                characterController.Move(knockbackDirection * knockbackDistance);
+            }
         }
 
         SetSpriteColors(hitFlashColor);

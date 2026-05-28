@@ -128,7 +128,7 @@ public class MonsterDefinitionTable
         for (int i = 0; i < rows.Count; i++)
         {
             MonsterDefinitionRow row = rows[i];
-            if (row.kind != MonsterKind.Normal)
+            if (!IsSpawnableRegularKind(row.kind))
             {
                 continue;
             }
@@ -149,12 +149,19 @@ public class MonsterDefinitionTable
             return (MonsterKind)typeValue;
         }
 
-        return MonsterKind.Normal;
+        return MonsterKind.None;
+    }
+
+    static bool IsSpawnableRegularKind(MonsterKind kind)
+    {
+        return kind == MonsterKind.Melee
+            || kind == MonsterKind.Ranged
+            || kind == MonsterKind.Mage;
     }
 
     static MonsterDefinitionTable CreateFallback()
     {
         return LoadFromCsv(@"mon_id,mon_level,mon_type,mon_hp,mon_mp,mon_dmg,mon_speed,give_exp,mon_prefab
-2001,1,0,10,0,1,3.5,10,SPUM_orc_m1");
+2001,1,1,10,0,1,3.5,10,SPUM_orc_m1");
     }
 }

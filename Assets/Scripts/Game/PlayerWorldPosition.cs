@@ -1,11 +1,8 @@
 using UnityEngine;
 
-// 플레이어의 실제 월드 좌표(스폰·AI 기준)를 매 프레임 갱신합니다.
+// 플레이어 월드 좌표를 다른 시스템(스폰·AI)에 전달합니다.
 public class PlayerWorldPosition : MonoBehaviour
 {
-    public static PlayerWorldPosition Instance { get; private set; }
-
-    [SerializeField] float groundHeight = 0f;
     [SerializeField] Transform trackTarget;
 
     Vector3 worldCenter;
@@ -14,65 +11,22 @@ public class PlayerWorldPosition : MonoBehaviour
 
     void Awake()
     {
-        Instance = this;
-        EnsureTrackTarget();
-        Refresh();
-    }
-
-    void OnDestroy()
-    {
-        if (Instance == this)
-        {
-            Instance = null;
-        }
-    }
-
-    void LateUpdate()
-    {
-        Refresh();
-    }
-
-    public void Refresh()
-    {
-        PlayerMovement movement = GetComponent<PlayerMovement>();
-        if (movement != null)
-        {
-            worldCenter = PlayerMovement.LastWorldCenter;
-            worldCenter.y = groundHeight;
-            return;
-        }
-
         EnsureTrackTarget();
         worldCenter = ReadWorldCenter(trackTarget);
-        worldCenter.y = groundHeight;
+        if (GetComponent<CharacterController>() == null)
+        {
+            worldCenter.y = GroundHeightSampler.GetCharacterSurfaceY(worldCenter, GameSession.GroundY);
+        }
     }
 
-    public static bool TryGetWorldCenter(float groundHeight, out Vector3 center)
+    public void SyncFromMovement(Vector3 centerFromMovement)
     {
-        if (Instance == null)
-        {
-            GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
-            if (playerObject != null)
-            {
-                Instance = playerObject.GetComponent<PlayerWorldPosition>();
-                if (Instance == null)
-                {
-                    Instance = playerObject.AddComponent<PlayerWorldPosition>();
-                }
-            }
-        }
+        worldCenter = centerFromMovement;
+    }
 
-        if (Instance == null)
-        {
-            center = Vector3.zero;
-            return false;
-        }
-
-        Instance.groundHeight = groundHeight;
-        Instance.Refresh();
-        center = Instance.worldCenter;
-        center.y = groundHeight;
-        return true;
+    public static bool TryGetWorldCenter(out Vector3 center)
+    {
+        return GameSession.TryGetPlayerWorldCenter(out center);
     }
 
     void EnsureTrackTarget()
