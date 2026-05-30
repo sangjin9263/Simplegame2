@@ -1,9 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
-// 몬스터가 맞으면 잠깐 붉게 보이고 뒤로 밀려납니다.
+// 몬스터가 맞으면 잠깐 붉게 보이고, 옵션에 따라 뒤로 밀립니다.
 public class MonsterHitReaction : MonoBehaviour
 {
+    [SerializeField] bool enableKnockback = true;
     [SerializeField] float knockbackDistance = 0.72f;
     [SerializeField] float hitFlashDuration = 0.12f;
     [SerializeField] Color hitFlashColor = new Color(1f, 0.25f, 0.25f, 1f);
@@ -31,6 +32,11 @@ public class MonsterHitReaction : MonoBehaviour
         {
             originalColors[i] = spriteRenderers[i].color;
         }
+    }
+
+    public void SetKnockbackEnabled(bool enabled)
+    {
+        enableKnockback = enabled;
     }
 
     public void ApplyHit(Vector3 knockbackDirection, Transform attacker, int damage)
@@ -65,13 +71,16 @@ public class MonsterHitReaction : MonoBehaviour
 
     IEnumerator HitRoutine(Vector3 knockbackDirection)
     {
-        knockbackDirection.y = 0f;
-        if (knockbackDirection.sqrMagnitude > 0.0001f)
+        if (enableKnockback && knockbackDistance > 0f)
         {
-            knockbackDirection.Normalize();
-            if (characterController != null)
+            knockbackDirection.y = 0f;
+            if (knockbackDirection.sqrMagnitude > 0.0001f)
             {
-                characterController.Move(knockbackDirection * knockbackDistance);
+                knockbackDirection.Normalize();
+                if (characterController != null)
+                {
+                    characterController.Move(knockbackDirection * knockbackDistance);
+                }
             }
         }
 

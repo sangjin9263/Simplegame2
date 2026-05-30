@@ -21,6 +21,10 @@ public class RadarMinimapView : MonoBehaviour
     readonly List<MonsterHealth> scannedMonsters = new List<MonsterHealth>();
     float nextMonsterScanTime;
     bool poolReady;
+    Vector3 lastBlipPlayerPosition;
+    float lastBlipCameraYaw;
+    bool playerBlipSorted;
+    bool blipsDirty = true;
 
     public void Configure(RectTransform blipsContainer, RectTransform centerPlayerBlip)
     {
@@ -78,9 +82,28 @@ public class RadarMinimapView : MonoBehaviour
         {
             MonsterRegistry.CopyAliveSnapshot(scannedMonsters);
             nextMonsterScanTime = Time.unscaledTime + monsterScanInterval;
+            blipsDirty = true;
         }
 
-        RefreshMonsterBlips();
+        Vector3 playerPosition = GetPlayerWorldCenter();
+        float cameraYaw = 0f;
+        bool hasCameraYaw = TryGetViewAxes(out _, out Vector3 viewForward);
+        if (hasCameraYaw)
+        {
+            cameraYaw = Mathf.Atan2(viewForward.x, viewForward.z);
+        }
+
+        Vector3 playerDelta = playerPosition - lastBlipPlayerPosition;
+        playerDelta.y = 0f;
+        if (playerDelta.sqrMagnitude > 0.01f
+            || (hasCameraYaw && Mathf.Abs(cameraYaw - lastBlipCameraYaw) > 0.01f)
+            || blipsDirty)
+        {
+            lastBlipPlayerPosition = playerPosition;
+            lastBlipCameraYaw = cameraYaw;
+            blipsDirty = false;
+            RefreshMonsterBlips(playerPosition);
+        }
     }
 
     bool BindPlayer()
@@ -99,11 +122,10 @@ public class RadarMinimapView : MonoBehaviour
         return false;
     }
 
-    void RefreshMonsterBlips()
+    void RefreshMonsterBlips(Vector3 playerPosition)
     {
         EnsureBlipPool();
 
-        Vector3 playerPosition = GetPlayerWorldCenter();
         int visibleCount = 0;
 
         for (int i = 0; i < scannedMonsters.Count; i++)
@@ -135,9 +157,10 @@ public class RadarMinimapView : MonoBehaviour
             monsterBlipPool[i].gameObject.SetActive(false);
         }
 
-        if (playerBlip != null)
+        if (playerBlip != null && !playerBlipSorted)
         {
             playerBlip.SetAsLastSibling();
+            playerBlipSorted = true;
         }
     }
 
@@ -182,10 +205,11 @@ public class RadarMinimapView : MonoBehaviour
             localRight / range * mapRadius,
             localForward / range * mapRadius);
 
-        float distance = mapPosition.magnitude;
-        if (distance > mapRadius)
+        float mapRadiusSqr = mapRadius * mapRadius;
+        float distanceSqr = mapPosition.sqrMagnitude;
+        if (distanceSqr > mapRadiusSqr)
         {
-            mapPosition = mapPosition / distance * mapRadius;
+            mapPosition = mapPosition / Mathf.Sqrt(distanceSqr) * mapRadius;
         }
 
         return true;

@@ -13,6 +13,8 @@ public class HomingFireballProjectile : MonoBehaviour
         public int maxHitTargets;
         public int damage;
         public float maxLifetime;
+        public float visualScale;
+        public Vector3 visualRotationOffset;
     }
 
     [SerializeField] float speed = 11.5f;
@@ -25,6 +27,7 @@ public class HomingFireballProjectile : MonoBehaviour
 
     Transform target;
     Transform attacker;
+    MonsterHealth targetHealth;
     Vector3 moveDirection;
     float targetSurfaceY;
     float aliveTime;
@@ -70,6 +73,11 @@ public class HomingFireballProjectile : MonoBehaviour
 
         target = targetTransform;
         attacker = attackerTransform;
+        targetHealth = targetTransform.GetComponent<MonsterHealth>();
+        if (targetHealth == null)
+        {
+            targetHealth = targetTransform.GetComponentInChildren<MonsterHealth>();
+        }
         targetSurfaceY = targetSurface;
         transform.position = origin;
 
@@ -82,7 +90,10 @@ public class HomingFireballProjectile : MonoBehaviour
             visualInstance = Instantiate(projectilePrefab, transform);
             visualInstance.name = projectilePrefab.name;
             visualInstance.transform.localPosition = Vector3.zero;
-            visualInstance.transform.localRotation = Quaternion.identity;
+
+            float scale = settings.visualScale > 0f ? settings.visualScale : 1f;
+            visualInstance.transform.localScale = Vector3.one * scale;
+            visualInstance.transform.localRotation = Quaternion.Euler(settings.visualRotationOffset);
         }
     }
 
@@ -101,12 +112,7 @@ public class HomingFireballProjectile : MonoBehaviour
             return;
         }
 
-        MonsterHealth health = target.GetComponent<MonsterHealth>();
-        if (health == null)
-        {
-            health = target.GetComponentInChildren<MonsterHealth>();
-        }
-
+        MonsterHealth health = targetHealth;
         if (health != null && health.IsDead)
         {
             Destroy(gameObject);
@@ -167,11 +173,12 @@ public class HomingFireballProjectile : MonoBehaviour
                     continue;
                 }
 
-                MonsterHealth health = monster.GetComponent<MonsterHealth>();
-                if (health == null)
+                if (!MonsterMovement.TryGetCombatCache(monster, out MonsterMovement.MonsterCombatCache combat))
                 {
-                    health = monster.GetComponentInChildren<MonsterHealth>();
+                    continue;
                 }
+
+                MonsterHealth health = combat.Health;
 
                 if (health != null && health.IsDead)
                 {
@@ -210,15 +217,14 @@ public class HomingFireballProjectile : MonoBehaviour
                 knockbackDirection.Normalize();
             }
 
-            MonsterHitReaction hitReaction = bestMonster.GetComponent<MonsterHitReaction>();
-            if (hitReaction == null)
+            if (!MonsterMovement.TryGetCombatCache(bestMonster, out MonsterMovement.MonsterCombatCache bestCombat))
             {
-                hitReaction = bestMonster.GetComponentInChildren<MonsterHitReaction>();
+                continue;
             }
 
-            if (hitReaction != null)
+            if (bestCombat.HitReaction != null)
             {
-                hitReaction.ApplyHit(knockbackDirection, attacker, damage);
+                bestCombat.HitReaction.ApplyHit(knockbackDirection, attacker, damage);
             }
             else if (bestHealth != null)
             {

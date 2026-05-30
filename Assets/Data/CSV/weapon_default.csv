@@ -1,0 +1,19 @@
+﻿# weapon_default.csv — 무기 데이터 (Weapon_ID: 3001+, 몬스터 2001+와 구분)
+# Weapon_Type: 1=Melee(검) 2=Ranged(활) 3=Magic(스태프)
+# Equ_position: R_Weapon | R_Weapon;L_Weapon (활은 양손)
+# Vfx1 = 좌클릭 기본 공격. Vfx2 = 우클릭 차지(예정, 스태프만 placeholder)
+#
+# [Vfx1 컬럼 의미 — 타입별]
+# Vfx1_Scale   : 검=VFX·히트박스 공통 scale | 활/스태프=투사체 visual scale
+# Vfx1_Speed   : 검=히트 판정 전개 속도(m/s) | 활/스태프=투사체 속도
+# Vfx1_Range   : 검=scale 1.0 기준 최대 거리(실제=코드상수×Scale) | 활/스태프=최대 사거리
+# Vfx1_Hit_Radius : 활/스태프=명중 판정 반경 | 검=비움
+# Vfx1_Turn_Speed / Explosion_Radius / Max_Targets / Search_Range : 스태프 유도·범위용
+# Vfx1_Lifetime: 검=VFX 이펙트 표시 시간(초) | 활/스태프=투사체 최대 비행 시간(초)
+#
+# Spawn offset, rotation 등 세부 비주얼: Weapon_test 튜닝 프로필 또는 SPUM_main prefab
+
+Weapon_ID,Weapon_Name,Weapon_Type,Weapon_LV,DMG,Atk_cooldown,Atk_Active_Delay,Atk_Anim_Duration,Equ_position,Weapon_image,Vfx_Prefab1,Vfx_Prefab2,Weapon_Charge_Impact,Weapon_Charge_time,Weapon_Hit_Impact,Vfx1_Number,Vfx1_Scale,Vfx1_Speed,Vfx1_Range,Vfx1_Hit_Radius,Vfx1_Turn_Speed,Vfx1_Explosion_Radius,Vfx1_Max_Targets,Vfx1_Lifetime,Vfx1_Search_Range,Vfx2_Number,Vfx2_Speed,Vfx2_Range,Vfx2_Hit_Radius,Vfx2_Turn_Speed,Vfx2_Explosion_Radius,Vfx2_Max_Targets,Vfx2_Lifetime,Vfx2_Search_Range
+3001,검,1,1,3,0.15,0.08,0.3,R_Weapon,New_Weapon_06,White Slash v1,,,,Impact_Hit_Lv1,1,0.5,14,3.48,0,0,0,1,1,0,,,,,,,,,
+3002,활,2,1,4,0.55,0.12,0.28,R_Weapon;L_Weapon,New_Weapon_10,Arrow01,,,,Impact_Hit_Lv1,1,0.168,22,16,0.6,0,0,1,0.83,16,,,,,,,,,
+3003,화염스태프,3,1,6,0.95,0.08,0.28,R_Weapon,Weapon_Sorcerer,Projectile_Fire_Ball_Lv2,Projectile_Fire_Ball_Lv4,,,Impact_Hit_Lv1,1,0.145,11.5,1,0.5,540,1.55,3,5,24,,,,,,,,,

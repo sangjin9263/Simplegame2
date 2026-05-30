@@ -80,12 +80,65 @@ public class MonsterMovement : MonoBehaviour
     readonly Vector3[] terrainDetourCandidates = new Vector3[MaxTerrainDetourCandidates];
 
     static readonly List<Transform> ActiveMonsters = new List<Transform>();
+    static readonly HashSet<Transform> ActiveMonsterSet = new HashSet<Transform>();
+    static readonly Dictionary<int, MonsterCombatCache> CombatCacheById = new Dictionary<int, MonsterCombatCache>();
+
+    public struct MonsterCombatCache
+    {
+        public MonsterHealth Health;
+        public MonsterHitReaction HitReaction;
+    }
 
     public static int ActiveMonsterCount => ActiveMonsters.Count;
+
+    public static bool TryGetCombatCache(Transform monster, out MonsterCombatCache cache)
+    {
+        cache = default;
+        if (monster == null)
+        {
+            return false;
+        }
+
+        int monsterId = monster.GetInstanceID();
+        if (CombatCacheById.TryGetValue(monsterId, out cache))
+        {
+            return cache.Health != null || cache.HitReaction != null;
+        }
+
+        cache.Health = monster.GetComponent<MonsterHealth>();
+        if (cache.Health == null)
+        {
+            cache.Health = monster.GetComponentInChildren<MonsterHealth>();
+        }
+
+        cache.HitReaction = monster.GetComponent<MonsterHitReaction>();
+        if (cache.HitReaction == null)
+        {
+            cache.HitReaction = monster.GetComponentInChildren<MonsterHitReaction>();
+        }
+
+        CombatCacheById[monsterId] = cache;
+        return cache.Health != null || cache.HitReaction != null;
+    }
 
     public void Configure(float speed)
     {
         moveSpeed = Mathf.Max(0f, speed);
+    }
+
+    public void ConfigureStopDistance(float distance)
+    {
+        stopDistance = Mathf.Max(0.1f, distance);
+    }
+
+    public float GetConfiguredMoveSpeed()
+    {
+        return moveSpeed;
+    }
+
+    public float GetConfiguredStopDistance()
+    {
+        return stopDistance;
     }
 
     public static Transform GetActiveMonster(int index)
@@ -100,8 +153,7 @@ public class MonsterMovement : MonoBehaviour
 
     public bool IsChasingPlayer()
     {
-        Vector3 toPlayer = GetVectorToPlayer();
-        return toPlayer.sqrMagnitude > stopDistance * stopDistance;
+        return GetFlatDistanceToPlayerSqr() > GetEffectiveStopDistanceSqr();
     }
 
     // 공격 모션 후 걷기/대기 애니를 다시 맞춥니다.
@@ -135,7 +187,7 @@ public class MonsterMovement : MonoBehaviour
 
     void OnEnable()
     {
-        if (!ActiveMonsters.Contains(transform))
+        if (ActiveMonsterSet.Add(transform))
         {
             ActiveMonsters.Add(transform);
         }
@@ -143,7 +195,9 @@ public class MonsterMovement : MonoBehaviour
 
     void OnDisable()
     {
+        ActiveMonsterSet.Remove(transform);
         ActiveMonsters.Remove(transform);
+        CombatCacheById.Remove(transform.GetInstanceID());
     }
 
     void Awake()
@@ -253,8 +307,7 @@ public class MonsterMovement : MonoBehaviour
         }
 
         Vector3 toPlayer = GetVectorToPlayer();
-        float stopDistanceSqr = stopDistance * stopDistance;
-        bool isChasing = toPlayer.sqrMagnitude > stopDistanceSqr;
+        bool isChasing = toPlayer.sqrMagnitude > GetEffectiveStopDistanceSqr();
 
         if (!isChasing)
         {
@@ -544,15 +597,38 @@ public class MonsterMovement : MonoBehaviour
             return Vector3.zero;
         }
 
-        Vector3 playerPosition = playerTransform.position;
+        Vector3 playerFlat = GetPlayerFlatChasePoint();
+        Vector3 monsterFlat = SpumChasePosition.GetFlatChasePoint(transform);
+        return playerFlat - monsterFlat;
+    }
+
+    Vector3 GetPlayerFlatChasePoint()
+    {
         if (GameSession.TryGetPlayerWorldCenter(out Vector3 trackedPosition))
         {
-            playerPosition = trackedPosition;
+            return new Vector3(trackedPosition.x, 0f, trackedPosition.z);
         }
 
-        Vector3 toPlayer = playerPosition - transform.position;
-        toPlayer.y = 0f;
-        return toPlayer;
+        return SpumChasePosition.GetFlatChasePoint(playerTransform);
+    }
+
+    float GetEffectiveStopDistance()
+    {
+        return stopDistance
+            + collisionRadius
+            + SpumChasePosition.GetCollisionRadius(playerTransform);
+    }
+
+    float GetEffectiveStopDistanceSqr()
+    {
+        float effective = GetEffectiveStopDistance();
+        return effective * effective;
+    }
+
+    float GetFlatDistanceToPlayerSqr()
+    {
+        Vector3 toPlayer = GetVectorToPlayer();
+        return toPlayer.sqrMagnitude;
     }
 
     float GetMonsterSurfaceY()

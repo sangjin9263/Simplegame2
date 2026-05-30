@@ -17,6 +17,7 @@ public class PlayerRangedCombat : MonoBehaviour
     [SerializeField] float projectileSpeed = 22f;
     [SerializeField] float projectileMaxRange = 16f;
     [SerializeField] float projectileHitRadius = 0.6f;
+    [SerializeField] float projectileMaxLifetime;
     [SerializeField] int projectileDamage = 4;
     [SerializeField] float projectileSpawnForwardOffset = 0.55f;
     [SerializeField] float projectileSpawnHeightOffset = 0.65f;
@@ -44,9 +45,74 @@ public class PlayerRangedCombat : MonoBehaviour
     bool hasBow;
     bool isAttacking;
     float nextAttackTime;
+    int equipRefreshPhase;
+
+    const int WeaponEquipRefreshIntervalFrames = 10;
 
     public bool IsAttacking => isAttacking;
     public bool HasBow => hasBow;
+
+    public WeaponVisualTuningSnapshot ExportVisualTuning()
+    {
+        return new WeaponVisualTuningSnapshot
+        {
+            weaponId = 3002,
+            weaponName = "Bow",
+            kind = WeaponVisualKind.Ranged,
+            attackCooldown = attackCooldown,
+            attackActiveDelay = attackActiveDelay,
+            attackAnimDuration = attackAnimDuration,
+            spawnForwardOffset = projectileSpawnForwardOffset,
+            spawnHeightOffset = projectileSpawnHeightOffset,
+            visualScale = arrowVisualScale,
+            visualRotationOffset = arrowVisualRotationOffset,
+            moveSpeed = projectileSpeed,
+            maxRange = projectileMaxRange,
+            hitRadius = projectileHitRadius,
+            damage = projectileDamage,
+            maxLifetime = GetProjectileMaxLifetime()
+        };
+    }
+
+    public void ApplyVisualTuning(WeaponVisualTuningSnapshot snapshot)
+    {
+        if (snapshot == null || snapshot.kind != WeaponVisualKind.Ranged)
+        {
+            return;
+        }
+
+        attackCooldown = snapshot.attackCooldown;
+        attackActiveDelay = snapshot.attackActiveDelay;
+        attackAnimDuration = snapshot.attackAnimDuration;
+        projectileSpawnForwardOffset = snapshot.spawnForwardOffset;
+        projectileSpawnHeightOffset = snapshot.spawnHeightOffset;
+        arrowVisualScale = snapshot.visualScale;
+        arrowVisualRotationOffset = snapshot.visualRotationOffset;
+        projectileSpeed = snapshot.moveSpeed;
+        projectileMaxRange = snapshot.maxRange;
+        projectileHitRadius = snapshot.hitRadius;
+        if (snapshot.damage > 0)
+        {
+            projectileDamage = snapshot.damage;
+        }
+
+        if (snapshot.maxLifetime > 0f)
+        {
+            projectileMaxLifetime = snapshot.maxLifetime;
+        }
+    }
+
+    public bool RequestTestAttack()
+    {
+        if (!hasBow || isAttacking)
+        {
+            return false;
+        }
+
+        nextAttackTime = 0f;
+        StartCoroutine(AttackRoutine());
+        return true;
+    }
 
     PlayerMovement playerMovement;
 
@@ -60,6 +126,7 @@ public class PlayerRangedCombat : MonoBehaviour
         }
 
         EnsureWeaponAssets();
+        equipRefreshPhase = Mathf.Abs(GetInstanceID()) % WeaponEquipRefreshIntervalFrames;
     }
 
     void Update()
@@ -71,7 +138,8 @@ public class PlayerRangedCombat : MonoBehaviour
 
         // SPUM 내부에서 무기 슬롯이 초기화되어도 활 장착 상태를 유지합니다.
         Sprite spriteToEquip = bowSprite;
-        if (spriteToEquip != null)
+        if (spriteToEquip != null
+            && (Time.frameCount % WeaponEquipRefreshIntervalFrames) == equipRefreshPhase)
         {
             SpumWeaponEquip.TryEquip(spumPrefabs, spriteToEquip, SpumWeaponVisualKind.Bow);
         }
@@ -161,6 +229,16 @@ public class PlayerRangedCombat : MonoBehaviour
         RestoreLocomotionAnimation();
     }
 
+    float GetProjectileMaxLifetime()
+    {
+        if (projectileMaxLifetime > 0f)
+        {
+            return projectileMaxLifetime;
+        }
+
+        return projectileMaxRange / Mathf.Max(projectileSpeed, 0.01f) + 0.1f;
+    }
+
     void SpawnArrow(Vector3 attackDirection)
     {
         EnsureWeaponAssets();
@@ -175,7 +253,7 @@ public class PlayerRangedCombat : MonoBehaviour
         origin += attackDirection * projectileSpawnForwardOffset;
         Vector3 shotDirection = BuildShotDirection(origin, attackDirection, surfaceY);
 
-        float maxLifetime = projectileMaxRange / Mathf.Max(projectileSpeed, 0.01f) + 0.1f;
+        float maxLifetime = GetProjectileMaxLifetime();
         RangedProjectile.Settings settings = new RangedProjectile.Settings
         {
             speed = projectileSpeed,

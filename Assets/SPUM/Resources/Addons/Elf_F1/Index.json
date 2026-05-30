@@ -1,0 +1,129 @@
+{
+    "Name": "Elf_F1",
+    "Path": "Assets/SPUM/Resources/Addons",
+    "Version": "",
+    "CreationDate": "2026-05-30 13:39:50",
+    "SpumAnimationData": [],
+    "SpumTextureData": [
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Arm_L",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Arm_R",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Body",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Foot_L",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Foot_R",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "Elf_F_2",
+            "UnitType": "Unit",
+            "PartType": "Body",
+            "SubType": "Head",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/1_Body/Elf_F_2"
+        },
+        {
+            "Name": "my_Cloth_1",
+            "UnitType": "Unit",
+            "PartType": "Cloth",
+            "SubType": "Body",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/2_Cloth/my_Cloth_1"
+        },
+        {
+            "Name": "my_Cloth_1",
+            "UnitType": "Unit",
+            "PartType": "Cloth",
+            "SubType": "Left",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/2_Cloth/my_Cloth_1"
+        },
+        {
+            "Name": "my_Cloth_1",
+            "UnitType": "Unit",
+            "PartType": "Cloth",
+            "SubType": "Right",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/2_Cloth/my_Cloth_1"
+        },
+        {
+            "Name": "my_Foot_1",
+            "UnitType": "Unit",
+            "PartType": "Pant",
+            "SubType": "Left",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/3_Pant/my_Foot_1"
+        },
+        {
+            "Name": "my_Foot_1",
+            "UnitType": "Unit",
+            "PartType": "Pant",
+            "SubType": "Right",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/3_Pant/my_Foot_1"
+        },
+        {
+            "Name": "my_Helmet_1",
+            "UnitType": "Unit",
+            "PartType": "Helmet",
+            "SubType": "my_Helmet_1",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/4_Helmet/my_Helmet_1"
+        },
+        {
+            "Name": "my_Armor_1",
+            "UnitType": "Unit",
+            "PartType": "Armor",
+            "SubType": "Body",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/5_Armor/my_Armor_1"
+        },
+        {
+            "Name": "test",
+            "UnitType": "Unit",
+            "PartType": "Weapons",
+            "SubType": "test",
+            "PartSubType": "Sword",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/6_Weapons/0_Sword/test"
+        },
+        {
+            "Name": "my_Back_1",
+            "UnitType": "Unit",
+            "PartType": "Back",
+            "SubType": "my_Back_1",
+            "PartSubType": "",
+            "Path": "Addons/Elf_F1/0_Unit/0_Sprite/7_Back/my_Back_1"
+        }
+    ]
+}

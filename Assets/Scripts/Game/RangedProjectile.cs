@@ -169,21 +169,17 @@ public class RangedProjectile : MonoBehaviour
                 continue;
             }
 
-            MonsterHealth health = monster.GetComponent<MonsterHealth>();
-            if (health == null)
-            {
-                health = monster.GetComponentInChildren<MonsterHealth>();
-            }
-
-            if (health != null && health.IsDead)
+            if (!MonsterMovement.TryGetCombatCache(monster, out MonsterMovement.MonsterCombatCache combat))
             {
                 continue;
             }
 
-            MonsterHitReaction hitReaction = monster.GetComponent<MonsterHitReaction>();
-            if (hitReaction == null)
+            MonsterHealth health = combat.Health;
+            MonsterHitReaction hitReaction = combat.HitReaction;
+
+            if (health != null && health.IsDead)
             {
-                hitReaction = monster.GetComponentInChildren<MonsterHitReaction>();
+                continue;
             }
 
             if (hitReaction == null && health == null)

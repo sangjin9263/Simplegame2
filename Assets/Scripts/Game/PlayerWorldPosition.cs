@@ -19,6 +19,18 @@ public class PlayerWorldPosition : MonoBehaviour
         }
     }
 
+    void LateUpdate()
+    {
+        PlayerMovement movement = GetComponent<PlayerMovement>();
+        if (movement != null && movement.enabled)
+        {
+            return;
+        }
+
+        EnsureTrackTarget();
+        worldCenter = ReadWorldCenter(trackTarget);
+    }
+
     public void SyncFromMovement(Vector3 centerFromMovement)
     {
         worldCenter = centerFromMovement;

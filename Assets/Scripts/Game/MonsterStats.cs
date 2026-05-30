@@ -7,11 +7,13 @@ public class MonsterStats : MonoBehaviour
     [SerializeField] int level = 1;
     [SerializeField] MonsterKind kind = MonsterKind.Melee;
     [SerializeField] int maxMp;
+    [SerializeField] int mpRegen;
 
     public int MonId => monId;
     public int Level => level;
     public MonsterKind Kind => kind;
     public int MaxMp => maxMp;
+    public int MpRegen => mpRegen;
     public bool IsBoss => kind == MonsterKind.Boss;
     public bool IsMelee => kind == MonsterKind.Melee;
 
@@ -77,6 +79,7 @@ public class MonsterStats : MonoBehaviour
         level = row.level;
         kind = row.kind;
         maxMp = row.mp;
+        mpRegen = row.mpRegen;
     }
 
     static bool IsRangedMonster(string name)

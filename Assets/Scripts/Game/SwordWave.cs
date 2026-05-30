@@ -20,6 +20,7 @@ public class SwordWave : MonoBehaviour
     }
 
     const float DefaultMaxVerticalHitDelta = 1.2f;
+    const float SlashVfxDuration = 1f;
 
     [SerializeField] float waveSpeed = 14f;
     [SerializeField] float waveMaxDistance = 5.5f;
@@ -36,11 +37,11 @@ public class SwordWave : MonoBehaviour
 
     Vector3 moveDirection;
     Vector3 hitOrigin;
-    Vector3 hitStartPosition;
     Vector3 startPosition;
     Transform attacker;
-    float traveledDistance;
+    float spawnSideOffsetMagnitude;
     float aliveTime;
+    float hitSweepDuration;
     int waveDamage = 3;
     float maxVerticalHitDelta = DefaultMaxVerticalHitDelta;
     readonly HashSet<int> hitMonsterIds = new HashSet<int>();
@@ -76,7 +77,10 @@ public class SwordWave : MonoBehaviour
         waveWidth = settings.waveWidth;
         spawnForwardOffset = settings.spawnForwardOffset;
         float sideOffset = settings.spawnSideOffset;
+        spawnSideOffsetMagnitude = Mathf.Abs(sideOffset);
         spawnHeightOffset = settings.spawnHeightOffset;
+        // 옆 spawn offset 때문에 정면 몬스터가 폭 판정 밖으로 빠지지 않게 보정합니다.
+        waveWidth = settings.waveWidth + spawnSideOffsetMagnitude * 2f;
         slashVfxScale = settings.slashVfxScale;
         slashVfxRotationOffset = settings.slashVfxRotationOffset;
         maxLifetime = settings.maxLifetime;
@@ -96,12 +100,19 @@ public class SwordWave : MonoBehaviour
             + sideDirection * sideOffset;
         hitOrigin.y = groundHeight;
 
-        hitStartPosition = hitOrigin;
-        startPosition = hitStartPosition;
+        startPosition = hitOrigin;
         startPosition.y = groundHeight + spawnHeightOffset;
         transform.position = startPosition;
 
+        hitSweepDuration = Mathf.Max(0.08f, waveMaxDistance / Mathf.Max(waveSpeed, 0.01f));
+        maxLifetime = SlashVfxDuration;
+
         SpawnSlashVfx();
+    }
+
+    public void CancelAndDestroy()
+    {
+        Destroy(gameObject);
     }
 
     void SpawnSlashVfx()
@@ -125,25 +136,25 @@ public class SwordWave : MonoBehaviour
     void Update()
     {
         aliveTime += Time.deltaTime;
-        float step = waveSpeed * Time.deltaTime;
-        traveledDistance += step;
-
-        hitStartPosition = hitOrigin + moveDirection * traveledDistance;
-        startPosition = hitStartPosition;
-        startPosition.y = groundHeight + spawnHeightOffset;
-        transform.position = startPosition;
-
         TryHitMonsters();
 
-        if (traveledDistance >= waveMaxDistance || aliveTime >= maxLifetime)
+        if (aliveTime >= maxLifetime)
         {
             Destroy(gameObject);
         }
     }
 
+    float GetCurrentHitReach()
+    {
+        float progress = Mathf.Clamp01(aliveTime / hitSweepDuration);
+        progress = 1f - (1f - progress) * (1f - progress);
+        return waveMaxDistance * progress;
+    }
+
     void TryHitMonsters()
     {
         float halfWidth = waveWidth * 0.5f;
+        float hitReach = GetCurrentHitReach();
 
         for (int i = 0; i < MonsterMovement.ActiveMonsterCount; i++)
         {
@@ -175,7 +186,9 @@ public class SwordWave : MonoBehaviour
 
             Vector3 toMonster = monsterPosition - hitOriginFlat;
             float along = Vector3.Dot(toMonster, moveDirection);
-            if (along < -halfWidth || along > traveledDistance + halfWidth)
+            float flatDistance = toMonster.magnitude;
+            bool pointBlank = flatDistance <= halfWidth + spawnSideOffsetMagnitude + 0.35f;
+            if (!pointBlank && (along < -halfWidth || along > hitReach + halfWidth))
             {
                 continue;
             }
@@ -188,7 +201,12 @@ public class SwordWave : MonoBehaviour
                 continue;
             }
 
-            if (GroundHeightSampler.IsWalkableTerrainBlockingLine(
+            bool sameFloor = Mathf.Abs(monsterSurfaceY - groundHeight) <= maxVerticalHitDelta;
+            bool inSweepRange = along >= -halfWidth && along <= hitReach + halfWidth;
+            bool skipTerrainBlock = sameFloor && inSweepRange;
+
+            if (!skipTerrainBlock
+                && GroundHeightSampler.IsWalkableTerrainBlockingLine(
                     hitOrigin,
                     groundHeight,
                     monsterWorld,
@@ -197,21 +215,17 @@ public class SwordWave : MonoBehaviour
                 continue;
             }
 
-            MonsterHealth health = monster.GetComponent<MonsterHealth>();
-            if (health == null)
-            {
-                health = monster.GetComponentInChildren<MonsterHealth>();
-            }
-
-            if (health != null && health.IsDead)
+            if (!MonsterMovement.TryGetCombatCache(monster, out MonsterMovement.MonsterCombatCache combat))
             {
                 continue;
             }
 
-            MonsterHitReaction hitReaction = monster.GetComponent<MonsterHitReaction>();
-            if (hitReaction == null)
+            MonsterHealth health = combat.Health;
+            MonsterHitReaction hitReaction = combat.HitReaction;
+
+            if (health != null && health.IsDead)
             {
-                hitReaction = monster.GetComponentInChildren<MonsterHitReaction>();
+                continue;
             }
 
             if (hitReaction == null && health == null)
@@ -254,6 +268,7 @@ public class SwordWave : MonoBehaviour
         if (vfxInstance != null)
         {
             Destroy(vfxInstance);
+            vfxInstance = null;
         }
     }
 }

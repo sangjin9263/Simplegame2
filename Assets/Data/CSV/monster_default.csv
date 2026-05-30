@@ -1,10 +1,18 @@
-mon_id,mon_level,mon_type,mon_hp,mon_mp,mon_dmg,mon_speed,give_exp,mon_prefab
-2001,1,1,10,0,1,3.5,10,SPUM_orc_m1
-2002,1,1,10,0,1,3.5,10,SPUM_orc_m2
-2003,1,1,10,0,1,3.5,10,SPUM_orc_m3
-2004,1,1,10,0,1,3.5,10,SPUM_orc_m4
-2005,1,1,10,0,1,3.5,10,SPUM_orc_m5
-2006,1,1,10,0,1,3.5,10,SPUM_orc_m6
-2007,1,2,10,0,1,3.5,10,SPUM_orc_m7
-2008,1,2,10,0,1,3.5,10,SPUM_orc_m8
-2009,1,3,10,0,1,3.5,10,SPUM_orc_m9
+﻿# monster_default.csv - 몬스터 데이터 (Mon_ID: 2001+, 무기 3001+와 구분)
+# Mon_Type: 1=근접(Melee) 2=원거리(Ranged) 3=마법(Mage) 4=보스(Boss)
+#
+# mon_projectile / mon_hit_impact : type 2,3(원거리,마법) 위주. 근접은 mon_hit_impact만
+# mon_atk_range / mon_cooldown / mon_anim_duration / mon_fire_delay_N / stop_distance : 공격 기본 튜닝 (규접은 mon_fire_delay_N = Damage Apply N)
+# 투사체 VFX 등 부가 튜닝: Assets/Data/MonsterTuning/Monster_2001.json
+#
+
+mon_id,mon_name,mon_type,mon_level,mon_hp,mon_mp,mon_mp_regen,mon_dmg,mon_speed,give_exp,mon_atk_range,mon_cooldown,mon_anim_duration,mon_fire_delay_N,stop_distance,mon_prefab,mon_projectile,mon_hit_impact
+2001,오크 근접1,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m1,,Impact_Hit_Lv1
+2002,오크 근접2,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m2,,Impact_Hit_Lv1
+2003,오크 근접3,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m3,,Impact_Hit_Lv1
+2004,오크 근접4,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m4,,Impact_Hit_Lv1
+2005,오크 근접5,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m5,,Impact_Hit_Lv1
+2006,오크 근접6,1,1,10,0,0,1,3.5,10,1.2,1.1,0.45,0.4,0.9,SPUM_orc_m6,,Impact_Hit_Lv1
+2007,오크 원거리1,2,1,10,0,0,1,3.5,10,4.3,1.35,0.45,0.35,4,SPUM_orc_m7,Arrow01,Impact_Hit_Lv1
+2008,오크 원거리2,2,1,10,0,0,1,3.5,10,4.3,1.35,0.45,0.35,4,SPUM_orc_m8,Arrow01,Impact_Hit_Lv1
+2009,오크 주술사1,3,1,10,10,2,1,3.5,10,7.3,1.35,0.45,0.35,7,SPUM_orc_m9,Projectile_Energy_Ball_B,Impact_Energy_Ball

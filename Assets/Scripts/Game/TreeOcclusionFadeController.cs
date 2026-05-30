@@ -40,6 +40,8 @@ public class TreeOcclusionFadeController : MonoBehaviour
     readonly HashSet<int> fadingThisFrame = new HashSet<int>();
     readonly List<int> groupsToRemove = new List<int>();
     readonly List<Transform> cachedTrees = new List<Transform>();
+    readonly HashSet<Transform> cachedTreeSet = new HashSet<Transform>();
+    readonly Dictionary<int, Renderer> primaryRendererByTreeId = new Dictionary<int, Renderer>();
 
     Shader fadeShader;
     Camera targetCamera;
@@ -87,12 +89,33 @@ public class TreeOcclusionFadeController : MonoBehaviour
 
     public void RegisterTree(Transform treeRoot)
     {
-        if (treeRoot == null || cachedTrees.Contains(treeRoot))
+        if (treeRoot == null || !cachedTreeSet.Add(treeRoot))
         {
             return;
         }
 
         cachedTrees.Add(treeRoot);
+        CachePrimaryRenderer(treeRoot);
+    }
+
+    void CachePrimaryRenderer(Transform treeRoot)
+    {
+        int key = treeRoot.GetInstanceID();
+        if (primaryRendererByTreeId.ContainsKey(key))
+        {
+            return;
+        }
+
+        Renderer renderer = treeRoot.GetComponent<Renderer>();
+        if (renderer == null)
+        {
+            renderer = treeRoot.GetComponentInChildren<Renderer>();
+        }
+
+        if (renderer != null)
+        {
+            primaryRendererByTreeId[key] = renderer;
+        }
     }
 
     void Awake()
@@ -143,11 +166,6 @@ public class TreeOcclusionFadeController : MonoBehaviour
             return;
         }
 
-        if (Time.time >= nextTreeCacheTime)
-        {
-            RefreshTreeCache();
-        }
-
         Vector3 playerBase = GetPlayerBasePosition();
         Vector3 playerFeet = playerBase + Vector3.up * playerFeetHeight;
         Vector3 playerFocus = playerBase + Vector3.up * playerFocusHeight;
@@ -169,10 +187,14 @@ public class TreeOcclusionFadeController : MonoBehaviour
                 continue;
             }
 
-            Renderer renderer = treeRoot.GetComponent<Renderer>();
-            if (renderer == null)
+            int treeId = treeRoot.GetInstanceID();
+            if (!primaryRendererByTreeId.TryGetValue(treeId, out Renderer renderer))
             {
-                renderer = treeRoot.GetComponentInChildren<Renderer>();
+                CachePrimaryRenderer(treeRoot);
+                if (!primaryRendererByTreeId.TryGetValue(treeId, out renderer))
+                {
+                    continue;
+                }
             }
 
             if (renderer == null)
@@ -243,13 +265,15 @@ public class TreeOcclusionFadeController : MonoBehaviour
     {
         nextTreeCacheTime = Time.time + treeCacheInterval;
         cachedTrees.Clear();
+        cachedTreeSet.Clear();
+        primaryRendererByTreeId.Clear();
 
         GameObject[] trees = GameObject.FindGameObjectsWithTag(PropCollisionLayers.TreeObstacleTag);
         for (int i = 0; i < trees.Length; i++)
         {
             if (trees[i] != null)
             {
-                cachedTrees.Add(trees[i].transform);
+                RegisterTree(trees[i].transform);
             }
         }
     }

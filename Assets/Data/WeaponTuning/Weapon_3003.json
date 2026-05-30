@@ -1,0 +1,33 @@
+{
+    "weaponId": 3003,
+    "weaponName": "화염스태프",
+    "kind": 3,
+    "weaponLevel": 1,
+    "damage": 6,
+    "equPosition": "R_Weapon",
+    "weaponImage": "Weapon_Sorcerer",
+    "vfxPrefab1": "Projectile_Fire_Ball_Lv2",
+    "vfxPrefab2": "Projectile_Fire_Ball_Lv4",
+    "weaponHitImpact": "Impact_Hit_Lv1",
+    "vfx1Lifetime": 5.0,
+    "attackCooldown": 0.949999988079071,
+    "attackActiveDelay": 0.07999999821186066,
+    "attackAnimDuration": 0.2800000011920929,
+    "spawnForwardOffset": 0.5799999833106995,
+    "spawnSideOffset": 0.2800000011920929,
+    "spawnHeightOffset": 0.7200000286102295,
+    "visualScale": 0.14500004053115846,
+    "visualRotationOffset": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+    },
+    "moveSpeed": 11.5,
+    "maxRange": 1.0,
+    "hitRadius": 0.5,
+    "turnSpeed": 540.0,
+    "explosionRadius": 1.5499999523162842,
+    "maxHitTargets": 3,
+    "maxLifetime": 5.0,
+    "targetSearchRange": 24.0
+}

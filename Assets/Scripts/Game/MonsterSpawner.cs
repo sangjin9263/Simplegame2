@@ -427,12 +427,18 @@ public class MonsterSpawner : MonoBehaviour
 
         if (row.monId != 0)
         {
-            MonsterStats.Apply(monster, row);
+            MonsterVisualTuningApplier.TryApplyToMonster(
+                monster,
+                MonsterVisualTuningCsvBridge.ToSnapshot(row));
+            MonsterVisualTuningApplier.TryApplySavedTuning(monster, row.monId);
         }
         else if (monsterTable != null
                  && monsterTable.TryGetByPrefabName(GetPrefabBaseName(monster.name), out MonsterDefinitionRow fallbackRow))
         {
-            MonsterStats.Apply(monster, fallbackRow);
+            MonsterVisualTuningApplier.TryApplyToMonster(
+                monster,
+                MonsterVisualTuningCsvBridge.ToSnapshot(fallbackRow));
+            MonsterVisualTuningApplier.TryApplySavedTuning(monster, fallbackRow.monId);
         }
 
         if (farDespawn != null)

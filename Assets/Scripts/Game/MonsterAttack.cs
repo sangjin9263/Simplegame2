@@ -14,6 +14,7 @@ public class MonsterAttack : MonoBehaviour
 
     Transform playerTransform;
     MonsterHealth monsterHealth;
+    MonsterMovement monsterMovement;
     float nextAttackTime;
     bool isAttacking;
     int lastFlipSide;
@@ -25,9 +26,87 @@ public class MonsterAttack : MonoBehaviour
         attackDamage = Mathf.Max(0, damage);
     }
 
+    public MonsterVisualTuningSnapshot ExportVisualTuning(MonsterKind kind, int monId, string monName)
+    {
+        return new MonsterVisualTuningSnapshot
+        {
+            monId = monId,
+            monName = monName ?? string.Empty,
+            kind = kind,
+            damage = attackDamage,
+            attackRange = attackRange,
+            attackCooldown = attackCooldown,
+            attackAnimDuration = attackAnimDuration,
+            damageApplyNormalizedTime = damageApplyNormalizedTime
+        };
+    }
+
+    public void ApplyVisualTuning(MonsterVisualTuningSnapshot snapshot)
+    {
+        if (snapshot == null || snapshot.kind != MonsterKind.Melee)
+        {
+            return;
+        }
+
+        attackRange = snapshot.attackRange;
+        attackCooldown = snapshot.attackCooldown;
+        attackAnimDuration = snapshot.attackAnimDuration;
+        damageApplyNormalizedTime = snapshot.damageApplyNormalizedTime;
+        if (snapshot.damage > 0)
+        {
+            attackDamage = snapshot.damage;
+        }
+    }
+
+    public bool RequestTestAttack()
+    {
+        if (isAttacking || (monsterHealth != null && monsterHealth.IsDead))
+        {
+            return false;
+        }
+
+        if (playerTransform == null && !TryResolvePlayer())
+        {
+            return false;
+        }
+
+        if (!TryGetVectorToPlayer(out Vector3 toPlayer))
+        {
+            return false;
+        }
+
+        nextAttackTime = 0f;
+        StartCoroutine(AttackRoutine(toPlayer.sqrMagnitude > 0.0001f ? toPlayer.normalized : transform.forward));
+        return true;
+    }
+
+    bool TryResolvePlayer()
+    {
+        if (playerTransform != null)
+        {
+            return true;
+        }
+
+        if (GameSession.TryGetPlayerTransform(out Transform player))
+        {
+            playerTransform = player;
+            return true;
+        }
+
+        GameObject playerObject = GameObject.FindGameObjectWithTag(WorldCollision.PlayerTag);
+        if (playerObject == null)
+        {
+            return false;
+        }
+
+        playerTransform = playerObject.transform;
+        return true;
+    }
+
     void Awake()
     {
         monsterHealth = GetComponent<MonsterHealth>();
+        monsterMovement = GetComponent<MonsterMovement>();
     }
 
     void Start()
@@ -114,10 +193,9 @@ public class MonsterAttack : MonoBehaviour
 
     void RestoreLocomotion()
     {
-        MonsterMovement movement = GetComponent<MonsterMovement>();
-        if (movement != null)
+        if (monsterMovement != null)
         {
-            movement.RestoreLocomotionAfterAttack();
+            monsterMovement.RestoreLocomotionAfterAttack();
             return;
         }
 
@@ -196,8 +274,9 @@ public class MonsterAttack : MonoBehaviour
             playerPosition = trackedPosition;
         }
 
-        toPlayer = playerPosition - transform.position;
-        toPlayer.y = 0f;
+        Vector3 monsterFlat = SpumChasePosition.GetFlatChasePoint(transform);
+        Vector3 playerFlat = new Vector3(playerPosition.x, 0f, playerPosition.z);
+        toPlayer = playerFlat - monsterFlat;
         return true;
     }
 

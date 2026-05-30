@@ -17,13 +17,13 @@ public static class GameAssets
     const string EnergyImpactPrefabResourcesPath = "Impact/Magic/Impact_Energy_Ball";
 
 #if UNITY_EDITOR
-    const string SlashVfxEditorPath = "Assets/Prefabs/Weapon/1/White Slash v1.prefab";
-    const string WeaponSpriteEditorPath = "Assets/Prefabs/Weapon/1/New_Weapon_06.png";
-    const string BowSpriteEditorPath = "Assets/Prefabs/Weapon/2/New_Weapon_10.png";
-    const string StaffSpriteEditorPath = "Assets/Prefabs/Weapon/4/Weapon_Sorcerer.png";
-    const string ArrowPrefabEditorPath = "Assets/Prefabs/Weapon/3/Arrow01.prefab";
-    const string FireballPrefabEditorPath = "Assets/Prefabs/Weapon/4/Projectile_Fire_Ball_Lv2.prefab";
-    const string EnergyBallPrefabEditorPath = "Assets/Prefabs/Weapon/5/Projectile_Energy_Ball_B.prefab";
+    const string SlashVfxEditorPath = "Assets/Prefabs/Weapon/1_Sword/White Slash v1.prefab";
+    const string WeaponSpriteEditorPath = "Assets/Prefabs/Weapon/1_Sword/New_Weapon_06.png";
+    const string BowSpriteEditorPath = "Assets/Prefabs/Weapon/2_Bow/New_Weapon_10.png";
+    const string StaffSpriteEditorPath = "Assets/Prefabs/Weapon/3_Fire_magic/Weapon_Sorcerer.png";
+    const string ArrowPrefabEditorPath = "Assets/Prefabs/Weapon/2_Bow/Arrow01.prefab";
+    const string FireballPrefabEditorPath = "Assets/Prefabs/Weapon/3_Fire_magic/Projectile_Fire_Ball_Lv2.prefab";
+    const string EnergyBallPrefabEditorPath = "Assets/Prefabs/Weapon/4_Energy_magic/Projectile_Energy_Ball_B.prefab";
     const string HitImpactPrefabEditorPath = "Assets/Prefabs/impact/hit/Impact_Hit_Lv1.prefab";
     const string FireImpactPrefabEditorPath = "Assets/Prefabs/impact/fire/Impact_Fire_Lv1.prefab";
     const string EnergyImpactPrefabEditorPath = "Assets/Prefabs/impact/magic/Impact_Energy_Ball.prefab";
@@ -287,6 +287,33 @@ public static class GameAssets
         return trimmed;
 #endif
         return assignedPrefabs;
+    }
+
+    public static GameObject LoadMonsterPrefab(string prefabName, GameObject assignedPrefab = null)
+    {
+        if (assignedPrefab != null)
+        {
+            return assignedPrefab;
+        }
+
+        if (string.IsNullOrWhiteSpace(prefabName))
+        {
+            return null;
+        }
+
+        string trimmed = prefabName.Trim();
+        GameObject fromResources = Resources.Load<GameObject>("Monsters/" + trimmed);
+        if (fromResources != null)
+        {
+            return fromResources;
+        }
+
+#if UNITY_EDITOR
+        return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+            MonsterPrefabEditorFolder + "/" + trimmed + ".prefab");
+#else
+        return null;
+#endif
     }
 
     static GameObject[] MergeMonsterPrefabs(GameObject[] assignedPrefabs)

@@ -10,6 +10,7 @@ public class GameSessionHudView : MonoBehaviour
 
     float remainingSeconds;
     int killCount;
+    int lastDisplayedSecond = -1;
 
     public void Configure(Text timer, Text killCount)
     {
@@ -57,7 +58,12 @@ public class GameSessionHudView : MonoBehaviour
         }
 
         remainingSeconds = Mathf.Max(0f, remainingSeconds - Time.deltaTime);
-        RefreshTimer();
+        int displayedSecond = Mathf.CeilToInt(remainingSeconds);
+        if (displayedSecond != lastDisplayedSecond)
+        {
+            lastDisplayedSecond = displayedSecond;
+            RefreshTimer();
+        }
     }
 
     public void AddKill(int amount = 1)

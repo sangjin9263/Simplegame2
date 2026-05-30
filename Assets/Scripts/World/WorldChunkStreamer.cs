@@ -89,6 +89,7 @@ public class WorldChunkStreamer : MonoBehaviour
 
     // 아직 생성하지 않은 청크 목록입니다.
     readonly List<ChunkCoordinate> pendingChunkSpawns = new List<ChunkCoordinate>();
+    int pendingChunkSpawnIndex;
 
     // RefreshAllChunks마다 new 하지 않고 재사용해 GC 스파이크를 줄입니다.
     readonly HashSet<Vector2Int> neededChunkCoordsScratch = new HashSet<Vector2Int>();
@@ -153,6 +154,7 @@ public class WorldChunkStreamer : MonoBehaviour
 
         ChunkCoordinate center = ChunkCoordinate.FromWorldPosition(playerTransform.position, chunkSize);
         pendingChunkSpawns.Clear();
+        pendingChunkSpawnIndex = 0;
 
         for (int offsetX = -viewRadius; offsetX <= viewRadius; offsetX++)
         {
@@ -168,18 +170,21 @@ public class WorldChunkStreamer : MonoBehaviour
         }
 
         int spawnBudget = Mathf.Max(1, chunksPerFrame);
-        while (pendingChunkSpawns.Count > 0)
+        while (pendingChunkSpawnIndex < pendingChunkSpawns.Count)
         {
-            int spawnCountThisFrame = Mathf.Min(spawnBudget, pendingChunkSpawns.Count);
+            int remaining = pendingChunkSpawns.Count - pendingChunkSpawnIndex;
+            int spawnCountThisFrame = Mathf.Min(spawnBudget, remaining);
             for (int i = 0; i < spawnCountThisFrame; i++)
             {
-                ChunkCoordinate coord = pendingChunkSpawns[0];
-                pendingChunkSpawns.RemoveAt(0);
+                ChunkCoordinate coord = pendingChunkSpawns[pendingChunkSpawnIndex++];
                 SpawnChunk(coord);
             }
 
             yield return null;
         }
+
+        pendingChunkSpawns.Clear();
+        pendingChunkSpawnIndex = 0;
     }
 
     // 씬에 남아 있는 옛 바닥 타일 콜라이더를 끕니다 (이동 검사 방해 방지).
@@ -450,6 +455,7 @@ public class WorldChunkStreamer : MonoBehaviour
         }
 
         pendingChunkSpawns.Clear();
+        pendingChunkSpawnIndex = 0;
         foreach (Vector2Int needed in neededChunkCoordsScratch)
         {
             if (!activeChunks.ContainsKey(needed))
@@ -473,13 +479,13 @@ public class WorldChunkStreamer : MonoBehaviour
     {
         int spawnBudget = Mathf.Max(1, chunksPerFrame);
 
-        while (pendingChunkSpawns.Count > 0)
+        while (pendingChunkSpawnIndex < pendingChunkSpawns.Count)
         {
-            int spawnCountThisFrame = Mathf.Min(spawnBudget, pendingChunkSpawns.Count);
+            int remaining = pendingChunkSpawns.Count - pendingChunkSpawnIndex;
+            int spawnCountThisFrame = Mathf.Min(spawnBudget, remaining);
             for (int i = 0; i < spawnCountThisFrame; i++)
             {
-                ChunkCoordinate coord = pendingChunkSpawns[0];
-                pendingChunkSpawns.RemoveAt(0);
+                ChunkCoordinate coord = pendingChunkSpawns[pendingChunkSpawnIndex++];
 
                 if (!activeChunks.ContainsKey(coord.ToVector2Int()))
                 {
@@ -490,6 +496,8 @@ public class WorldChunkStreamer : MonoBehaviour
             yield return null;
         }
 
+        pendingChunkSpawns.Clear();
+        pendingChunkSpawnIndex = 0;
         chunkSpawnCoroutine = null;
     }
 

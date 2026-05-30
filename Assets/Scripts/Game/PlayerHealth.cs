@@ -6,13 +6,26 @@ using UnityEngine;
 public class PlayerHealth : MonoBehaviour
 {
     [SerializeField] int maxHp;
+    [SerializeField] bool infiniteHp;
 
     int currentHp;
     bool initialized;
 
     public int CurrentHp => currentHp;
     public int MaxHp => maxHp;
-    public bool IsAlive => initialized && currentHp > 0;
+    public bool IsAlive => initialized && (infiniteHp || currentHp > 0);
+    public bool InfiniteHp => infiniteHp;
+
+    public void SetInfiniteHp(bool enabled)
+    {
+        infiniteHp = enabled;
+        if (infiniteHp && currentHp <= 0)
+        {
+            currentHp = Mathf.Max(1, maxHp);
+        }
+
+        NotifyHpChanged(false);
+    }
 
     public event Action<int, int, bool> OnHpChanged;
 
@@ -42,6 +55,12 @@ public class PlayerHealth : MonoBehaviour
         if (!IsAlive)
         {
             return false;
+        }
+
+        if (infiniteHp)
+        {
+            NotifyHpChanged(false);
+            return true;
         }
 
         currentHp = Mathf.Max(0, currentHp - damage);

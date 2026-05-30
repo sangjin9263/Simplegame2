@@ -42,6 +42,12 @@ public class ThirdPersonFollowCamera : MonoBehaviour
     // 플레이 시 마우스 커서를 숨길지 여부입니다.
     [SerializeField] bool lockCursorOnPlay = true;
 
+    // 커서 잠금/해제 토글 키입니다.
+    [SerializeField] KeyCode toggleCursorLockKey = KeyCode.Escape;
+
+    // 커서가 풀린 상태에서 왼쪽 클릭 시 다시 잠글지 여부입니다.
+    [SerializeField] bool relockCursorOnLeftClick = true;
+
     // 사용할 카메라입니다.
     [SerializeField] Camera targetCamera;
 
@@ -84,14 +90,21 @@ public class ThirdPersonFollowCamera : MonoBehaviour
             Debug.Log($"[카메라] 상하 고정: {(lockVerticalRotation ? "켜짐 (좌우만)" : "꺼짐 (상하+좌우)")}");
         }
 
-        // Esc 키로 커서 잠금을 풉니다.
-        if (Input.GetKeyDown(KeyCode.Escape))
+        // 토글 키로 커서 잠금/해제합니다.
+        if (Input.GetKeyDown(toggleCursorLockKey))
         {
-            UnlockCursor();
+            if (isCursorLocked)
+            {
+                UnlockCursor();
+            }
+            else
+            {
+                LockCursor();
+            }
         }
 
-        // 마우스 왼쪽 클릭 시 다시 잠급니다.
-        if (Input.GetMouseButtonDown(0) && !isCursorLocked)
+        // 마우스 왼쪽 클릭 시 다시 잠급니다 (Weapon_test 튜닝 UI 사용 시 끔).
+        if (relockCursorOnLeftClick && Input.GetMouseButtonDown(0) && !isCursorLocked)
         {
             LockCursor();
         }

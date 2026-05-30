@@ -4,7 +4,7 @@ using UnityEngine;
 // 무기 장착과 마우스 왼쪽 버튼 유지 검기 공격을 처리합니다.
 public class PlayerWeaponCombat : MonoBehaviour
 {
-    const string DefaultSlashVfxPath = "Assets/Prefabs/Weapon/1/White Slash v1.prefab";
+    const string DefaultSlashVfxPath = "Assets/Prefabs/Weapon/1_Sword/White Slash v1.prefab";
 
     [SerializeField] SPUM_Prefabs spumPrefabs;
 
@@ -23,10 +23,8 @@ public class PlayerWeaponCombat : MonoBehaviour
 
     [SerializeField] int swordWaveDamage = DefaultSwordWaveDamage;
     [SerializeField] float waveSpeed = 14f;
-    [Tooltip("검기 이펙트(시각) 크기입니다.")]
+    [Tooltip("검기 이펙트 크기이며, 타격 판정(거리·폭)도 같은 비율로 맞춰집니다.")]
     [SerializeField] float slashVfxScale = 0.3f;
-    [Tooltip("검기 타격 판정 크기입니다. 기본 0.85를 유지하면 기존 판정과 동일합니다.")]
-    [SerializeField] float slashHitboxScale = 0.3f;
     [SerializeField] Vector3 slashVfxRotationOffset = new Vector3(-90f, 0f, -135f);
     [Tooltip("공격 방향으로 캐릭터에서 검기까지 앞쪽 거리입니다. Slash Vfx Scale 과 무관합니다.")]
     [SerializeField] float slashSpawnForwardOffset = 0.22f;
@@ -37,6 +35,10 @@ public class PlayerWeaponCombat : MonoBehaviour
     bool hasWeapon;
     bool isAttacking;
     float nextAttackTime;
+    SwordWave activeSwordWave;
+    int equipRefreshPhase;
+
+    const int WeaponEquipRefreshIntervalFrames = 10;
 
     public bool IsAttacking => isAttacking;
     Sprite equippedWeaponSprite;
@@ -53,6 +55,7 @@ public class PlayerWeaponCombat : MonoBehaviour
         }
 
         EnsureSlashVfxPrefab();
+        equipRefreshPhase = Mathf.Abs(GetInstanceID()) % WeaponEquipRefreshIntervalFrames;
     }
 
     void Update()
@@ -62,8 +65,9 @@ public class PlayerWeaponCombat : MonoBehaviour
             return;
         }
 
-        // SPUM 내부에서 무기 슬롯이 꺼져도 장착 상태에서는 매 프레임 다시 붙입니다.
-        if (equippedWeaponSprite != null)
+        // SPUM 내부에서 무기 슬롯이 꺼져도 장착 상태에서는 주기적으로 다시 붙입니다.
+        if (equippedWeaponSprite != null
+            && (Time.frameCount % WeaponEquipRefreshIntervalFrames) == equipRefreshPhase)
         {
             SpumWeaponEquip.TryEquip(spumPrefabs, equippedWeaponSprite, SpumWeaponVisualKind.Melee);
         }
@@ -73,12 +77,7 @@ public class PlayerWeaponCombat : MonoBehaviour
             return;
         }
 
-        if (isAttacking)
-        {
-            return;
-        }
-
-        if (Time.time < nextAttackTime)
+        if (!TryBeginAttack())
         {
             return;
         }
@@ -86,7 +85,78 @@ public class PlayerWeaponCombat : MonoBehaviour
         StartCoroutine(AttackRoutine());
     }
 
+    bool TryBeginAttack()
+    {
+        if (!hasWeapon || isAttacking || Time.time < nextAttackTime)
+        {
+            return false;
+        }
+
+        isAttacking = true;
+        nextAttackTime = Time.time + attackCooldown;
+        return true;
+    }
+
     public bool HasEquippedWeapon => hasWeapon;
+
+    public WeaponVisualTuningSnapshot ExportVisualTuning()
+    {
+        return new WeaponVisualTuningSnapshot
+        {
+            weaponId = 3001,
+            weaponName = "Sword",
+            kind = WeaponVisualKind.Melee,
+            attackCooldown = attackCooldown,
+            attackActiveDelay = attackActiveDelay,
+            attackAnimDuration = attackAnimDuration,
+            spawnForwardOffset = slashSpawnForwardOffset,
+            spawnSideOffset = slashSpawnSideOffset,
+            spawnHeightOffset = slashSpawnHeightOffset,
+            visualScale = slashVfxScale,
+            visualRotationOffset = slashVfxRotationOffset,
+            moveSpeed = waveSpeed,
+            damage = swordWaveDamage
+        };
+    }
+
+    public void ApplyVisualTuning(WeaponVisualTuningSnapshot snapshot)
+    {
+        if (snapshot == null || snapshot.kind != WeaponVisualKind.Melee)
+        {
+            return;
+        }
+
+        attackCooldown = snapshot.attackCooldown;
+        attackActiveDelay = snapshot.attackActiveDelay;
+        attackAnimDuration = snapshot.attackAnimDuration;
+        slashSpawnForwardOffset = snapshot.spawnForwardOffset;
+        slashSpawnSideOffset = snapshot.spawnSideOffset;
+        slashSpawnHeightOffset = snapshot.spawnHeightOffset;
+        slashVfxScale = snapshot.visualScale;
+        slashVfxRotationOffset = snapshot.visualRotationOffset;
+        waveSpeed = snapshot.moveSpeed;
+        if (snapshot.damage > 0)
+        {
+            swordWaveDamage = snapshot.damage;
+        }
+    }
+
+    public bool RequestTestAttack()
+    {
+        if (!hasWeapon || isAttacking)
+        {
+            return false;
+        }
+
+        nextAttackTime = 0f;
+        if (!TryBeginAttack())
+        {
+            return false;
+        }
+
+        StartCoroutine(AttackRoutine());
+        return true;
+    }
 
     public bool TryEquipWeapon(Sprite weaponSprite)
     {
@@ -131,9 +201,6 @@ public class PlayerWeaponCombat : MonoBehaviour
 
     IEnumerator AttackRoutine()
     {
-        isAttacking = true;
-        nextAttackTime = Time.time + attackCooldown;
-
         if (equippedWeaponSprite != null)
         {
             SpumWeaponEquip.TryEquip(spumPrefabs, equippedWeaponSprite, SpumWeaponVisualKind.Melee);
@@ -162,6 +229,12 @@ public class PlayerWeaponCombat : MonoBehaviour
     {
         EnsureSlashVfxPrefab();
 
+        if (activeSwordWave != null)
+        {
+            activeSwordWave.CancelAndDestroy();
+            activeSwordWave = null;
+        }
+
         Vector3 attackDirection = GetAttackDirection();
         Vector3 origin = transform.position;
         origin.y = GroundHeightSampler.GetSurfaceY(origin, GameSession.GroundY);
@@ -172,9 +245,9 @@ public class PlayerWeaponCombat : MonoBehaviour
             facingSide = 1;
         }
 
-        float hitboxScale = Mathf.Max(0.1f, slashHitboxScale);
-        float scaledHitLength = SlashHitLengthAtUnitScale * hitboxScale;
-        float scaledHitWidth = SlashHitWidthAtUnitScale * hitboxScale;
+        float hitScale = Mathf.Max(0.1f, slashVfxScale);
+        float scaledHitLength = SlashHitLengthAtUnitScale * hitScale;
+        float scaledHitWidth = SlashHitWidthAtUnitScale * hitScale;
 
         SwordWave.Settings settings = new SwordWave.Settings
         {
@@ -186,12 +259,12 @@ public class PlayerWeaponCombat : MonoBehaviour
             spawnHeightOffset = slashSpawnHeightOffset,
             slashVfxScale = slashVfxScale,
             slashVfxRotationOffset = slashVfxRotationOffset,
-            maxLifetime = scaledHitLength / Mathf.Max(waveSpeed, 0.01f) + 0.15f,
+            maxLifetime = scaledHitLength / Mathf.Max(waveSpeed, 0.01f) + 0.2f,
             waveDamage = swordWaveDamage > 0 ? swordWaveDamage : DefaultSwordWaveDamage,
             maxVerticalHitDelta = slashMaxVerticalHitDelta
         };
 
-        SwordWave.Spawn(origin, attackDirection, transform, slashVfxPrefab, origin.y, settings);
+        activeSwordWave = SwordWave.Spawn(origin, attackDirection, transform, slashVfxPrefab, origin.y, settings);
     }
 
     void RestoreLocomotionAnimation()

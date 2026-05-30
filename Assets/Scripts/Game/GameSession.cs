@@ -35,6 +35,12 @@ public static class GameSession
     {
         EnsurePlayerCached();
 
+        if (playerWorldPosition != null && (playerMovement == null || !playerMovement.enabled))
+        {
+            center = playerWorldPosition.WorldCenter;
+            return true;
+        }
+
         if (playerMovement != null)
         {
             center = playerMovement.WorldCenter;

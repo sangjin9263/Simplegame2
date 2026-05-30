@@ -10890,6 +10890,10 @@ MonoBehaviour:
   stuckMoveProgressRatio: 0.18
   wallNormalMemorySeconds: 0.45
   terrainScanIntervalFrames: 6
+  terrainDetourProbeStepDistance: 1.2
+  terrainDetourScoreDistanceWeight: 4
+  terrainDetourScoreSightBonus: 16
+  terrainDetourScoreDistancePenalty: 0.22
   spumPrefabs: {fileID: 0}
 --- !u!114 &2387030463848396435
 MonoBehaviour:
@@ -10904,7 +10908,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHp: 10
-  expOnDeathForTest: 1
+  infiniteHp: 0
+  expOnDeathForTest: 10
   deathDestroyDelay: 0.05
   defaultDeathAnimDuration: 0.8
   spumPrefabs: {fileID: 0}
@@ -10920,6 +10925,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 791f06db05fadbb4aa8838ee91fb7ddc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enableKnockback: 1
   knockbackDistance: 0.72
   hitFlashDuration: 0.12
   hitFlashColor: {r: 1, g: 0.25, b: 0.25, a: 1}
@@ -10935,7 +10941,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 253269a9ac5f51d4d97dfbeae5fb8d1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  attackRange: 1.1
+  attackRange: 1.2
   attackCooldown: 1.1
   attackAnimDuration: 0.45
   attackDamage: 1
@@ -11000,13 +11006,23 @@ MonoBehaviour:
   attackDamage: 1
   projectileKind: 0
   projectilePrefab: {fileID: 0}
-  projectileSpeed: 14
-  projectileHitRadius: 0.42
-  projectileMaxLifetime: 2.5
+  arrowProjectileSpeed: 22
+  arrowProjectileMaxRange: 16
+  arrowProjectileHitRadius: 0.6
+  energyProjectileSpeed: 14
+  energyProjectileHitRadius: 0.42
+  energyProjectileMaxLifetime: 2.5
   projectileSpawnForwardOffset: 0.55
   projectileSpawnHeightOffset: 0.72
+  targetAimHeightOffset: 0.45
   arrowVisualRotationOffset: {x: 0, y: -90, z: 0}
   arrowVisualScale: 0.35
+  arrowVisualScaleMultiplier: 0.48
+  arrowArcHeightMin: 0.3
+  arrowArcHeightMax: 0.9
+  arrowArcHeightDistanceMultiplier: 0.07
+  energyVisualScaleMultiplier: 0.8
+  syncArrowFromPlayer: 1
   spumPrefabs: {fileID: 0}
 --- !u!1 &7680373533318423067
 GameObject:

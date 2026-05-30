@@ -7,6 +7,7 @@ public class MonsterHealth : MonoBehaviour
     const int DefaultMaxHp = 10;
 
     [SerializeField] int maxHp = DefaultMaxHp;
+    [SerializeField] bool infiniteHp;
     [SerializeField] int expOnDeathForTest = 1;
     [SerializeField] float deathDestroyDelay = 0.05f;
     [SerializeField] float defaultDeathAnimDuration = 0.8f;
@@ -27,6 +28,20 @@ public class MonsterHealth : MonoBehaviour
     public int MaxHp => maxHp;
     public MonsterKind Kind => kind;
     public bool IsBoss => kind == MonsterKind.Boss;
+    public bool InfiniteHp => infiniteHp;
+
+    public void SetInfiniteHp(bool enabled)
+    {
+        infiniteHp = enabled;
+        if (infiniteHp && currentHp <= 0)
+        {
+            currentHp = Mathf.Max(1, maxHp);
+            isDead = false;
+            isDying = false;
+        }
+
+        RefreshHpBar();
+    }
 
     public void Configure(int hp, int expReward, MonsterKind monsterKind)
     {
@@ -75,6 +90,11 @@ public class MonsterHealth : MonoBehaviour
         if (IsDead || damage <= 0)
         {
             return false;
+        }
+
+        if (infiniteHp)
+        {
+            return true;
         }
 
         currentHp = Mathf.Max(0, currentHp - damage);

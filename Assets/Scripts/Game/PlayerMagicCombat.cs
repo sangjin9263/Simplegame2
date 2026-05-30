@@ -25,12 +25,83 @@ public class PlayerMagicCombat : MonoBehaviour
     [SerializeField] float projectileSpawnHeightOffset = 0.72f;
     [SerializeField] float targetSearchRange = 24f;
 
+    [Header("화염구 비주얼")]
+    [SerializeField] Vector3 projectileVisualRotationOffset = Vector3.zero;
+    [SerializeField] float projectileVisualScale = 1f;
+
     bool hasStaff;
     bool isAttacking;
     float nextAttackTime;
+    int equipRefreshPhase;
+
+    const int WeaponEquipRefreshIntervalFrames = 10;
 
     public bool IsAttacking => isAttacking;
     public bool HasStaff => hasStaff;
+
+    public WeaponVisualTuningSnapshot ExportVisualTuning()
+    {
+        return new WeaponVisualTuningSnapshot
+        {
+            weaponId = 3003,
+            weaponName = "Fire Staff",
+            kind = WeaponVisualKind.Magic,
+            attackCooldown = attackCooldown,
+            attackActiveDelay = attackActiveDelay,
+            attackAnimDuration = attackAnimDuration,
+            spawnForwardOffset = projectileSpawnForwardOffset,
+            spawnHeightOffset = projectileSpawnHeightOffset,
+            visualScale = projectileVisualScale,
+            visualRotationOffset = projectileVisualRotationOffset,
+            moveSpeed = projectileSpeed,
+            hitRadius = projectileHitRadius,
+            turnSpeed = projectileTurnSpeed,
+            explosionRadius = projectileExplosionRadius,
+            maxHitTargets = projectileMaxHitTargets,
+            maxLifetime = projectileMaxLifetime,
+            targetSearchRange = targetSearchRange,
+            damage = projectileDamage
+        };
+    }
+
+    public void ApplyVisualTuning(WeaponVisualTuningSnapshot snapshot)
+    {
+        if (snapshot == null || snapshot.kind != WeaponVisualKind.Magic)
+        {
+            return;
+        }
+
+        attackCooldown = snapshot.attackCooldown;
+        attackActiveDelay = snapshot.attackActiveDelay;
+        attackAnimDuration = snapshot.attackAnimDuration;
+        projectileSpawnForwardOffset = snapshot.spawnForwardOffset;
+        projectileSpawnHeightOffset = snapshot.spawnHeightOffset;
+        projectileVisualScale = snapshot.visualScale;
+        projectileVisualRotationOffset = snapshot.visualRotationOffset;
+        projectileSpeed = snapshot.moveSpeed;
+        projectileHitRadius = snapshot.hitRadius;
+        projectileTurnSpeed = snapshot.turnSpeed;
+        projectileExplosionRadius = snapshot.explosionRadius;
+        projectileMaxHitTargets = snapshot.maxHitTargets;
+        projectileMaxLifetime = snapshot.maxLifetime;
+        targetSearchRange = snapshot.targetSearchRange;
+        if (snapshot.damage > 0)
+        {
+            projectileDamage = snapshot.damage;
+        }
+    }
+
+    public bool RequestTestAttack()
+    {
+        if (!hasStaff || isAttacking)
+        {
+            return false;
+        }
+
+        nextAttackTime = 0f;
+        StartCoroutine(AttackRoutine());
+        return true;
+    }
 
     PlayerMovement playerMovement;
 
@@ -44,6 +115,7 @@ public class PlayerMagicCombat : MonoBehaviour
         }
 
         EnsureMagicAssets();
+        equipRefreshPhase = Mathf.Abs(GetInstanceID()) % WeaponEquipRefreshIntervalFrames;
     }
 
     void Update()
@@ -53,7 +125,8 @@ public class PlayerMagicCombat : MonoBehaviour
             return;
         }
 
-        if (staffSprite != null)
+        if (staffSprite != null
+            && (Time.frameCount % WeaponEquipRefreshIntervalFrames) == equipRefreshPhase)
         {
             SpumWeaponEquip.TryEquip(spumPrefabs, staffSprite, SpumWeaponVisualKind.Staff);
         }
@@ -168,7 +241,9 @@ public class PlayerMagicCombat : MonoBehaviour
             explosionRadius = projectileExplosionRadius,
             maxHitTargets = projectileMaxHitTargets,
             damage = projectileDamage,
-            maxLifetime = projectileMaxLifetime
+            maxLifetime = projectileMaxLifetime,
+            visualScale = projectileVisualScale,
+            visualRotationOffset = projectileVisualRotationOffset
         };
 
         HomingFireballProjectile.Spawn(origin, target, transform, fireballPrefab, targetSurfaceY, settings);

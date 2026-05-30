@@ -36,14 +36,20 @@ public class MonsterRangedAttack : MonoBehaviour
     [SerializeField] float arrowArcHeightMax = 0.9f;
     [SerializeField] float arrowArcHeightDistanceMultiplier = 0.07f;
     [SerializeField] float energyVisualScaleMultiplier = 0.8f;
+    [SerializeField] bool syncArrowFromPlayer = true;
 
     [SerializeField] SPUM_Prefabs spumPrefabs;
 
     Transform playerTransform;
     MonsterHealth monsterHealth;
+    MonsterMovement monsterMovement;
     float nextAttackTime;
     bool isAttacking;
     int lastFlipSide;
+    int updatePhase;
+    bool hasLineOfSight;
+
+    const int LineOfSightCheckIntervalFrames = 4;
 
     public bool IsAttacking => isAttacking;
 
@@ -52,9 +58,136 @@ public class MonsterRangedAttack : MonoBehaviour
         attackDamage = Mathf.Max(0, damage);
     }
 
+    public void SetSyncArrowFromPlayer(bool enabled)
+    {
+        syncArrowFromPlayer = enabled;
+    }
+
+    public void ConfigureProjectileKind(MonsterKind kind)
+    {
+        projectileKind = kind == MonsterKind.Mage ? ProjectileKind.EnergyBall : ProjectileKind.Arrow;
+        EnsureProjectileAsset();
+    }
+
+    public void ConfigureProjectilePrefabName(string prefabName)
+    {
+        if (string.IsNullOrWhiteSpace(prefabName))
+        {
+            EnsureProjectileAsset();
+            return;
+        }
+
+        string trimmed = prefabName.Trim();
+        if (trimmed.IndexOf("Energy", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || trimmed.IndexOf("Projectile", System.StringComparison.OrdinalIgnoreCase) >= 0
+                && trimmed.IndexOf("Arrow", System.StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            projectileKind = ProjectileKind.EnergyBall;
+            projectilePrefab = GameAssets.LoadEnergyBallPrefab(null);
+        }
+        else
+        {
+            projectileKind = ProjectileKind.Arrow;
+            projectilePrefab = GameAssets.LoadArrowPrefab(null);
+        }
+    }
+
+    public MonsterVisualTuningSnapshot ExportVisualTuning(MonsterKind kind, int monId, string monName)
+    {
+        bool energy = projectileKind == ProjectileKind.EnergyBall;
+        return new MonsterVisualTuningSnapshot
+        {
+            monId = monId,
+            monName = monName ?? string.Empty,
+            kind = kind,
+            damage = attackDamage,
+            attackRange = attackRange,
+            attackCooldown = attackCooldown,
+            attackAnimDuration = attackAnimDuration,
+            fireDelayNormalizedTime = fireDelayNormalizedTime,
+            projectilePrefab = projectilePrefab != null ? projectilePrefab.name : string.Empty,
+            projectileSpawnForwardOffset = projectileSpawnForwardOffset,
+            projectileSpawnHeightOffset = projectileSpawnHeightOffset,
+            targetAimHeightOffset = targetAimHeightOffset,
+            arrowProjectileSpeed = arrowProjectileSpeed,
+            arrowProjectileMaxRange = arrowProjectileMaxRange,
+            arrowProjectileHitRadius = arrowProjectileHitRadius,
+            arrowVisualScale = arrowVisualScale,
+            arrowVisualRotationOffset = arrowVisualRotationOffset,
+            arrowVisualScaleMultiplier = arrowVisualScaleMultiplier,
+            arrowArcHeightMin = arrowArcHeightMin,
+            arrowArcHeightMax = arrowArcHeightMax,
+            arrowArcHeightDistanceMultiplier = arrowArcHeightDistanceMultiplier,
+            energyProjectileSpeed = energy ? energyProjectileSpeed : arrowProjectileSpeed,
+            energyProjectileHitRadius = energy ? energyProjectileHitRadius : arrowProjectileHitRadius,
+            energyProjectileMaxLifetime = energyProjectileMaxLifetime,
+            energyVisualScaleMultiplier = energyVisualScaleMultiplier
+        };
+    }
+
+    public void ApplyVisualTuning(MonsterVisualTuningSnapshot snapshot)
+    {
+        if (snapshot == null || (snapshot.kind != MonsterKind.Ranged && snapshot.kind != MonsterKind.Mage))
+        {
+            return;
+        }
+
+        syncArrowFromPlayer = false;
+        attackRange = snapshot.attackRange;
+        attackCooldown = snapshot.attackCooldown;
+        attackAnimDuration = snapshot.attackAnimDuration;
+        fireDelayNormalizedTime = snapshot.fireDelayNormalizedTime;
+        projectileSpawnForwardOffset = snapshot.projectileSpawnForwardOffset;
+        projectileSpawnHeightOffset = snapshot.projectileSpawnHeightOffset;
+        targetAimHeightOffset = snapshot.targetAimHeightOffset;
+        arrowProjectileSpeed = snapshot.arrowProjectileSpeed;
+        arrowProjectileMaxRange = snapshot.arrowProjectileMaxRange;
+        arrowProjectileHitRadius = snapshot.arrowProjectileHitRadius;
+        arrowVisualScale = snapshot.arrowVisualScale;
+        arrowVisualRotationOffset = snapshot.arrowVisualRotationOffset;
+        arrowVisualScaleMultiplier = snapshot.arrowVisualScaleMultiplier;
+        arrowArcHeightMin = snapshot.arrowArcHeightMin;
+        arrowArcHeightMax = snapshot.arrowArcHeightMax;
+        arrowArcHeightDistanceMultiplier = snapshot.arrowArcHeightDistanceMultiplier;
+        energyProjectileSpeed = snapshot.energyProjectileSpeed;
+        energyProjectileHitRadius = snapshot.energyProjectileHitRadius;
+        energyProjectileMaxLifetime = snapshot.energyProjectileMaxLifetime;
+        energyVisualScaleMultiplier = snapshot.energyVisualScaleMultiplier;
+        if (snapshot.damage > 0)
+        {
+            attackDamage = snapshot.damage;
+        }
+
+        ConfigureProjectileKind(snapshot.kind);
+        if (!string.IsNullOrWhiteSpace(snapshot.projectilePrefab))
+        {
+            ConfigureProjectilePrefabName(snapshot.projectilePrefab);
+        }
+    }
+
+    public bool RequestTestAttack()
+    {
+        if (isAttacking || (monsterHealth != null && monsterHealth.IsDead))
+        {
+            return false;
+        }
+
+        if (!ResolvePlayer())
+        {
+            return false;
+        }
+
+        Vector3 toPlayer = GetVectorToPlayer();
+        nextAttackTime = 0f;
+        StartCoroutine(AttackRoutine(toPlayer));
+        return true;
+    }
+
     void Awake()
     {
         monsterHealth = GetComponent<MonsterHealth>();
+        monsterMovement = GetComponent<MonsterMovement>();
+        updatePhase = Mathf.Abs(GetInstanceID()) % LineOfSightCheckIntervalFrames;
     }
 
     void Start()
@@ -75,7 +208,7 @@ public class MonsterRangedAttack : MonoBehaviour
         }
 
         EnsureProjectileAsset();
-        if (projectileKind == ProjectileKind.Arrow)
+        if (projectileKind == ProjectileKind.Arrow && syncArrowFromPlayer)
         {
             SyncArrowSettingsFromPlayer();
         }
@@ -106,18 +239,28 @@ public class MonsterRangedAttack : MonoBehaviour
             return;
         }
 
-        float attackerSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(transform.position, transform.position.y);
-        float playerSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(playerTransform.position, playerTransform.position.y);
-        if (GroundHeightSampler.IsWalkableTerrainBlockingLine(
+        if (ShouldRefreshLineOfSight())
+        {
+            float attackerSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(transform.position, transform.position.y);
+            float playerSurfaceY = GroundHeightSampler.GetCharacterSurfaceY(playerTransform.position, playerTransform.position.y);
+            hasLineOfSight = !GroundHeightSampler.IsWalkableTerrainBlockingLine(
                 transform.position,
                 attackerSurfaceY,
                 playerTransform.position,
-                playerSurfaceY))
+                playerSurfaceY);
+        }
+
+        if (!hasLineOfSight)
         {
             return;
         }
 
         StartCoroutine(AttackRoutine(toPlayer));
+    }
+
+    bool ShouldRefreshLineOfSight()
+    {
+        return ((Time.frameCount + updatePhase) % LineOfSightCheckIntervalFrames) == 0;
     }
 
     IEnumerator AttackRoutine(Vector3 toPlayer)
@@ -174,7 +317,9 @@ public class MonsterRangedAttack : MonoBehaviour
             playerPosition = trackedPosition;
         }
 
-        return playerPosition - transform.position;
+        Vector3 monsterFlat = SpumChasePosition.GetFlatChasePoint(transform);
+        Vector3 playerFlat = new Vector3(playerPosition.x, 0f, playerPosition.z);
+        return playerFlat - monsterFlat;
     }
 
     void FireProjectile()
@@ -184,7 +329,7 @@ public class MonsterRangedAttack : MonoBehaviour
             return;
         }
 
-        if (projectileKind == ProjectileKind.Arrow)
+        if (projectileKind == ProjectileKind.Arrow && syncArrowFromPlayer)
         {
             SyncArrowSettingsFromPlayer();
         }
@@ -357,10 +502,9 @@ public class MonsterRangedAttack : MonoBehaviour
 
     void RestoreLocomotion()
     {
-        MonsterMovement movement = GetComponent<MonsterMovement>();
-        if (movement != null)
+        if (monsterMovement != null)
         {
-            movement.RestoreLocomotionAfterAttack();
+            monsterMovement.RestoreLocomotionAfterAttack();
             return;
         }
 
